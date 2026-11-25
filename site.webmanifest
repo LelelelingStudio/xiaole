@@ -1,0 +1,16 @@
+{
+  "name": "小了 · 了了了岭工作室 AI 助手",
+  "short_name": "小了",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f8ff",
+  "theme_color": "#6e8fd6",
+  "icons": [
+    { "src": "./xiaole64.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "./xiaole128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "./xiaole256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "./xiaole512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./xiaole.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

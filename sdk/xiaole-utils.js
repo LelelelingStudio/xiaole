@@ -146,6 +146,11 @@
     return html;
   }
 
+  function splitRow(line) {
+    var body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+    return body.split('|').map(function (c) { return c.trim(); });
+  }
+
   function toHtml(text) {
     var src = String(text == null ? '' : text).replace(/\r\n/g, '\n');
     var out = [];
@@ -218,6 +223,24 @@
         continue;
       }
 
+      // 表格：| a | b |  +  | --- | --- |
+      if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|[\s\-:|]+\|\s*$/.test(lines[i + 1])) {
+        closeLists();
+        var head = splitRow(line);
+        var rows = [];
+        i += 2;
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+          rows.push(splitRow(lines[i]));
+          i++;
+        }
+        var thead = '<tr>' + head.map(function (c) { return '<th>' + inline(c) + '</th>'; }).join('') + '</tr>';
+        var tbody = rows.map(function (r) {
+          return '<tr>' + r.map(function (c) { return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>';
+        }).join('');
+        out.push('<div class="xl-table-wrap"><table class="xl-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>');
+        continue;
+      }
+
       // 无序列表
       var ul = line.match(/^[\-\*\+]\s+(.*)$/);
       if (ul) {
@@ -254,11 +277,13 @@
         !/^(#{1,4})\s+/.test(lines[i]) &&
         !/^[\-\*\+]\s+/.test(lines[i]) &&
         !/^\d+\.\s+/.test(lines[i]) &&
-        !/^>\s?/.test(lines[i])
+        !/^>\s?/.test(lines[i]) &&
+        !/^\s*\|.*\|\s*$/.test(lines[i])
       ) {
         para.push(lines[i]);
         i++;
       }
+      if (!para.length) { para.push(lines[i]); i++; } // 兜底：任何没被识别的行都要吃掉，避免死循环
       out.push('<p class="xl-p">' + inline(para.join('\n')).replace(/\n/g, '<br>') + '</p>');
     }
 
@@ -268,10 +293,37 @@
 
   U.toHtml = toHtml;
 
+  /** 跨域链接直接下载：fetch → blob → a[download]，失败就新窗口打开 */
+  U.downloadUrl = function (url, filename) {
+    var name = filename || (String(url).split('/').pop() || 'download').split('?')[0];
+    function fallback() {
+      try { window.open(url, '_blank', 'noopener'); } catch (e) {}
+    }
+    if (!/^https?:/i.test(url)) { fallback(); return; }
+    fetch(url, { mode: 'cors' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('http ' + res.status);
+        return res.blob();
+      })
+      .then(function (blob) {
+        var obj = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = obj;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          if (a.parentNode) a.parentNode.removeChild(a);
+          URL.revokeObjectURL(obj);
+        }, 4000);
+      })
+      .catch(fallback);
+  };
+
   /** 取出正文里的 [[draw:描述]] 生图指令，并从展示文本中移除 */
   U.extractDraw = function (text) {
     var prompts = [];
-    var clean = String(text || '').replace(/\[\[draw:([^\]]{1,600})\]\]/gi, function (_, p) {
+    var clean = String(text || '').replace(/\[\[draw[:：]([^\]]{1,1200})\]\]/gi, function (_, p) {
       prompts.push(p.trim());
       return '';
     }).replace(/\n{3,}/g, '\n\n').trim();

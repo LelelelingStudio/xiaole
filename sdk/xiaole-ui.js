@@ -104,7 +104,7 @@
     bubble.querySelector('#xl-image-cancel').addEventListener('click', function () {
       UI.toggleImagePanel(false);
     });
-    imageGenBtn.addEventListener('click', submitImage);
+    imageGenBtn.addEventListener('click', function () { submitImage(); });
     imagePromptEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -248,9 +248,12 @@
   /* ================= 上下文超限：带去网页版 ================= */
 
   function encodeHandoff(messages) {
-    var trimmed = (messages || []).slice(-24).map(function (m) {
-      return { role: m.role, content: String(m.content || '').slice(0, 4000) };
-    });
+    var trimmed = (messages || [])
+      .filter(function (m) { return m && (m.role === 'user' || m.role === 'assistant'); })
+      .slice(-24)
+      .map(function (m) {
+        return { role: m.role, content: String(m.content || '').slice(0, 4000) };
+      });
     var json = JSON.stringify(trimmed);
     if (json.length > 60000) json = JSON.stringify(trimmed.slice(-8));
     try {
@@ -328,6 +331,15 @@
     addMessage('assistant', text, { local: true, instant: true });
   }
 
+  // 藏掉模型发来的生图指令，别让它露在气泡里
+  function uiText(str) {
+    return String(str || '')
+      .replace(/\[\[draw[:：]([^\]]*)\]\]/gi, '')
+      .replace(/\[\[draw[:：]?[^\]]*$/i, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   function addMessage(role, text, opts) {
     opts = opts || {};
     var wrap = U.el('div', 'xl-msg xl-msg-' + role);
@@ -336,7 +348,7 @@
     var content = U.el('div', 'xl-msg-text');
 
     if (opts.instant) {
-      content.innerHTML = U.toHtml(text);
+      content.innerHTML = U.toHtml(uiText(text));
     }
 
     body.appendChild(content);
@@ -367,12 +379,12 @@
           var take = 1;
           printed += queue.slice(0, take);
           queue = queue.slice(take);
-          content.innerHTML = U.toHtml(printed) + '<span class="xl-cursor"></span>';
+          content.innerHTML = U.toHtml(uiText(printed)) + '<span class="xl-cursor"></span>';
           scrollToBottom();
         } else if (finished) {
           clearInterval(typing.timer);
           typing = null;
-          content.innerHTML = U.toHtml(printed);
+          content.innerHTML = U.toHtml(uiText(printed));
           scrollToBottom();
         }
       }, interval)
@@ -494,6 +506,13 @@
         showLightbox(img.src, dl ? dl.href : img.src);
         return;
       }
+      var fileLink = e.target.closest ? e.target.closest('a.xl-file') : null;
+      if (fileLink) {
+        e.preventDefault();
+        U.downloadUrl(fileLink.getAttribute('href'), fileLink.textContent.replace('下载', '').trim());
+        return;
+      }
+
       var copyBtn = e.target.closest ? e.target.closest('.xl-copy') : null;
       if (copyBtn) {
         var block = copyBtn.closest('.xl-code-block');
@@ -525,11 +544,25 @@
       '</div>';
     listEl.appendChild(wrap);
     scrollToBottom();
+
+    // 水印版稍后替换
+    if (res && res.ready) {
+      res.ready.then(function (r) {
+        if (!r || !r.display) return;
+        var img = wrap.querySelector('.xl-msg-image img');
+        if (img) img.src = r.display;
+        var dl = wrap.querySelector('.xl-img-download');
+        if (dl) dl.href = r.save || r.display;
+        var wm = wrap.querySelector('.xl-img-wm');
+        if (wm) wm.parentNode.removeChild(wm);
+      });
+    }
   }
 
-  function submitImage() {
+  function submitImage(promptArg, opts) {
     if (!NS.image) return;
-    var prompt = (imagePromptEl.value || '').trim();
+    opts = opts || {};
+    var prompt = String(promptArg || (imagePromptEl.value || '')).trim();
     if (!prompt) {
       UI.showTip('先写一句画面描述吧');
       return;
@@ -542,7 +575,8 @@
 
     imageGenBtn.disabled = true;
     imageGenBtn.textContent = '生成中…';
-    addMessage('user', '画一张图：' + prompt, { instant: true });
+    if (!opts.quiet) addMessage('user', '画一张图：' + prompt, { instant: true });
+
     var loading = showLoading();
 
     NS.image
@@ -550,6 +584,14 @@
       .then(function (res) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
         addImageMessage(res);
+        U.convs.append({
+          role: 'assistant',
+          type: 'image',
+          imgId: res.id,
+          url: res.url,
+          prompt: prompt,
+          content: '（生成了图片：' + prompt + '）'
+        });
         imageGenBtn.disabled = false;
         imageGenBtn.textContent = '生成';
         imagePromptEl.value = '';
@@ -598,7 +640,9 @@
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
         loading = null;
         if (assistant) assistant.finish();
-        if (full) U.convs.append({ role: 'assistant', content: full, type: 'text' });
+        var draw = U.extractDraw(full || '');
+        if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' });
+        if (draw.prompts.length) submitImage(draw.prompts[0], { quiet: true });
         UI.hideTip();
       },
       onError: function () {
@@ -638,33 +682,36 @@
     chatContextFromConv(conv);
     UI.clearMessages();
 
-    var shown = 0;
-    (conv.messages || []).forEach(function (m) {
-      if (m.type === 'image') {
-        if (m.url) {
-          shown++;
-          (function (msg) {
-            var fallback = { id: msg.imgId, url: msg.url, display: msg.url, save: msg.url, mode: 'overlay' };
-            if (NS.image && NS.image.restore && msg.imgId) {
-              NS.image
-                .restore(msg.imgId, msg.url)
-                .then(function (res) {
-                  addImageMessage(res && res.display ? res : fallback);
-                })
-                .catch(function () {
-                  addImageMessage(fallback);
-                });
-            } else {
-              addImageMessage(fallback);
-            }
-          })(m);
+    var msgs = (conv.messages || []).slice();
+    if (!msgs.length) {
+      renderWelcome();
+      return;
+    }
+
+    // 顺序渲染：图片要等 IDB 取回来，避免图片插到文字后面
+    var i = 0;
+    (function next() {
+      if (i >= msgs.length) return;
+      var m = msgs[i++];
+
+      if (m.type === 'image' && m.url) {
+        var fallback = { id: m.imgId, url: m.url, display: m.url, save: m.url, mode: 'overlay' };
+        if (NS.image && NS.image.restore && m.imgId) {
+          NS.image
+            .restore(m.imgId, m.url)
+            .then(function (res) { addImageMessage(res && res.display ? res : fallback); next(); })
+            .catch(function () { addImageMessage(fallback); next(); });
+        } else {
+          addImageMessage(fallback);
+          next();
         }
-      } else if (m.content) {
+      } else if (m.role && m.content) {
         addMessage(m.role, m.content, { instant: true });
-        shown++;
+        next();
+      } else {
+        next();
       }
-    });
-    if (!shown) renderWelcome();
+    })();
   };
 
   UI.openHistory = function () {

@@ -187,6 +187,7 @@
   function openConv(id) {
     var conv = U.convs.switchTo(id);
     if (!conv) return;
+    setImgPanel(false);
     app.classList.remove('side-open');
     syncTitle(conv);
     renderConv(conv);
@@ -194,6 +195,7 @@
   }
 
   function startNewConv() {
+    setImgPanel(false);
     var conv = U.convs.create('新对话');
     app.classList.remove('side-open');
     syncTitle(conv);
@@ -208,8 +210,8 @@
   // 流式/静态渲染时先把 [[draw:...]] 藏起来，收尾再真正去生图
   function displayText(str) {
     return String(str || '')
-      .replace(/\[\[draw:([^\]]*)\]\]/gi, '')
-      .replace(/\[\[draw:?[^\]]*$/i, '');
+      .replace(/\[\[draw[:：]([^\]]*)\]\]/gi, '')
+      .replace(/\[\[draw[:：]?[^\]]*$/i, '');
   }
 
   function scrollBottom() {
@@ -373,8 +375,17 @@
       linkEl.setAttribute('download', 'xiaole-' + (r.id || 'img') + '.png');
     }
 
-    if (imgId) NS.image.restore(imgId, res.url).then(paint);
-    else paint(res);
+    if (imgId) {
+      NS.image.restore(imgId, res.url).then(paint);
+    } else {
+      paint(res);
+      // 水印版烤好后无缝替换（右键另存/下载都是带水印的真文件）
+      if (res && res.ready) {
+        res.ready.then(function (r) {
+          if (r && r.display) paint(r);
+        });
+      }
+    }
 
     listEl.appendChild(wrap);
     scrollBottom();
@@ -440,7 +451,8 @@
         if (assistant) assistant.finish(full);
 
         var draw = U.extractDraw(full || '');
-        if (full) U.convs.append({ role: 'assistant', content: draw.text || full, type: 'text' });
+        // 只存干净文本，别把 [[draw:...]] 指令写进历史
+        if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' });
         hideTip();
         refreshConvList();
 
@@ -579,6 +591,14 @@
         var wrap = img.closest('.xlp-msg-image');
         var dl = wrap && wrap.querySelector('.xlp-download');
         showLightbox(img.src, dl ? dl.href : img.src);
+        return;
+      }
+
+      // 文件链接：走 blob 下载，跨域也能真存下来
+      var fileLink = e.target.closest ? e.target.closest('a.xl-file') : null;
+      if (fileLink) {
+        e.preventDefault();
+        U.downloadUrl(fileLink.getAttribute('href'), fileLink.textContent.replace('下载', '').trim());
         return;
       }
 

@@ -67,6 +67,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.wfile.flush()
         conn.close()
 
+    def end_headers(self):
+        # 本地联调：静态文件也别缓存，改完 js 刷新即生效
+        if self.path.startswith("/api/"):
+            pass
+        else:
+            self.send_header("Cache-Control", "no-store, max-age=0")
+        super().end_headers()
+
     def do_GET(self):
         return super().do_GET()
 

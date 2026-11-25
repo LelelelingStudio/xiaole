@@ -756,3 +756,34 @@ body::before {
 
 .xlp-lightbox-dl { background: #eff5ff; color: #4a72c8; }
 .xlp-lightbox-close { background: #f4f6fb; color: #6a7893; }
+
+/* ===== 表格 ===== */
+.xlp-msg-text .xl-table-wrap {
+  margin: 8px 0;
+  overflow-x: auto;
+  border: 1px solid #e6edf9;
+  border-radius: 10px;
+}
+
+.xlp-msg-text .xl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.xlp-msg-text .xl-table th,
+.xlp-msg-text .xl-table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid #edf2fb;
+  line-height: 1.6;
+}
+
+.xlp-msg-text .xl-table th {
+  background: #f5f9ff;
+  font-weight: 600;
+  color: #3f5377;
+  white-space: nowrap;
+}
+
+.xlp-msg-text .xl-table tbody tr:last-child td { border-bottom: 0; }

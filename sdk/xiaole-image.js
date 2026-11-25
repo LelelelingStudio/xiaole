@@ -79,7 +79,18 @@
         if (!url) throw new Error('no image url');
         consume();
         U.emit('image', { url: url, remaining: Img.remaining() });
-        return Img.prepare(url);
+
+        // 先返回可展示的远程图（立刻出画面），水印版在后台烤好后再换
+        var id = U.hash(url);
+        return {
+          id: id,
+          url: url,
+          display: url,
+          save: url,
+          mode: 'overlay',
+          pending: true,
+          ready: Img.prepare(url)
+        };
       });
   };
 
