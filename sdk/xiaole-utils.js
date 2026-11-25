@@ -139,7 +139,7 @@
       var done = false;
       var timer = setTimeout(function () {
         if (!done) { done = true; resolve(false); }
-      }, 6000);
+      }, 12000);
       img.onload = function () {
         if (done) return;
         done = true;

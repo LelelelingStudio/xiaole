@@ -125,7 +125,17 @@
     U.store.set('gender', gender);
 
     // 先探测图层是否齐全：齐全直接走分层模式，否则用静态整体图
-    Ch.detectLayers().then(function (ok) {
+    function detectWithRetry(tried) {
+      return Ch.detectLayers().then(function (ok) {
+        if (ok || tried) return ok;
+        // 首次冷加载素材慢时会超时，稍等再探一次
+        return new Promise(function (r) {
+          setTimeout(function () { r(detectWithRetry(1)); }, 2500);
+        });
+      });
+    }
+
+    detectWithRetry(0).then(function (ok) {
       if (ok) {
         mountLayered();
       } else {
