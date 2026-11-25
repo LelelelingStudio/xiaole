@@ -884,3 +884,26 @@ body.xl-anchor-left .xl-reset-dot {
 
 .xl-msg .xl-table th { background: #f5f9ff; font-weight: 600; color: #3f5377; white-space: nowrap; }
 .xl-msg .xl-table tbody tr:last-child td { border-bottom: 0; }
+
+/* ===== 代码块 / 表格 下载按钮 ===== */
+.xl-msg .xl-code-acts { display: inline-flex; gap: 8px; }
+.xl-msg .xl-save-code,
+.xl-msg .xl-copy {
+  border: 0;
+  background: transparent;
+  color: #7a97d6;
+  font-size: 10px;
+  cursor: pointer;
+}
+.xl-msg .xl-save-table {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #e9f0fa;
+  background: #f8fbff;
+  color: #6f8dc8;
+  font-size: 10.5px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.xl-msg .xl-save-table:hover { background: #eef5ff; }

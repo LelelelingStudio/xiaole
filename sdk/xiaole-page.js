@@ -602,6 +602,33 @@
         return;
       }
 
+      // 代码块下载
+      var saveCode = e.target.closest ? e.target.closest('.xl-save-code') : null;
+      if (saveCode) {
+        var cb = saveCode.closest('.xl-code-block');
+        var codeEl2 = cb && cb.querySelector('.xl-code');
+        var langEl = cb && cb.querySelector('.xl-code-lang');
+        if (codeEl2) {
+          U.downloadText(codeEl2.textContent, U.codeFilename(langEl ? langEl.textContent : ''));
+          saveCode.textContent = '已保存';
+          setTimeout(function () { saveCode.textContent = '下载'; }, 1200);
+        }
+        return;
+      }
+
+      // 表格存 CSV
+      var saveTable = e.target.closest ? e.target.closest('.xl-save-table') : null;
+      if (saveTable) {
+        var tb = saveTable.closest('.xl-table-wrap');
+        var csv = U.tableToCsv(tb && tb.querySelector('table'));
+        if (csv) {
+          U.downloadText(csv, 'xiaole-table-' + new Date().toISOString().slice(0, 10) + '.csv', 'text/csv');
+          saveTable.textContent = '已保存 CSV';
+          setTimeout(function () { saveTable.textContent = '表格存为 CSV'; }, 1200);
+        }
+        return;
+      }
+
       // 代码块复制
       var copyBtn = e.target.closest ? e.target.closest('.xl-copy') : null;
       if (copyBtn) {

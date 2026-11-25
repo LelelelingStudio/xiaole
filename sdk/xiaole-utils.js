@@ -180,7 +180,8 @@
         var code = U.escape(buf.join('\n'));
         out.push(
           '<div class="xl-code-block"><div class="xl-code-head"><span class="xl-code-lang">' + lang +
-          '</span><button class="xl-copy" data-copy="1">复制</button></div>' +
+          '</span><span class="xl-code-acts"><button class="xl-copy" data-copy="1">复制</button>' +
+          '<button class="xl-save-code" data-save="1">下载</button></span></div>' +
           '<pre class="xl-code"><code>' + code + '</code></pre></div>'
         );
         continue;
@@ -237,7 +238,10 @@
         var tbody = rows.map(function (r) {
           return '<tr>' + r.map(function (c) { return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>';
         }).join('');
-        out.push('<div class="xl-table-wrap"><table class="xl-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>');
+        out.push(
+          '<div class="xl-table-wrap"><table class="xl-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>' +
+          '<button class="xl-save-table" data-save="1">表格存为 CSV</button></div>'
+        );
         continue;
       }
 
@@ -294,6 +298,49 @@
   U.toHtml = toHtml;
 
   /** 跨域链接直接下载：fetch → blob → a[download]，失败就新窗口打开 */
+  var CODE_EXT = {
+    python: 'py', py: 'py', javascript: 'js', js: 'js', typescript: 'ts', ts: 'ts', tsx: 'tsx', jsx: 'jsx',
+    json: 'json', html: 'html', css: 'css', scss: 'scss', sql: 'sql', bash: 'sh', sh: 'sh', shell: 'sh',
+    java: 'java', c: 'c', cpp: 'cpp', 'c++': 'cpp', go: 'go', rust: 'rs', ruby: 'rb', php: 'php',
+    swift: 'swift', kotlin: 'kt', yaml: 'yml', yml: 'yml', markdown: 'md', md: 'md', text: 'txt', txt: 'txt'
+  };
+
+  U.downloadText = function (text, filename, mime) {
+    try {
+      var blob = new Blob([String(text || '')], { type: (mime || 'text/plain') + ';charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename || 'xiaole.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  U.codeFilename = function (lang) {
+    var ext = CODE_EXT[String(lang || '').toLowerCase()] || 'txt';
+    return 'xiaole-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '.' + ext;
+  };
+
+  U.tableToCsv = function (table) {
+    if (!table) return '';
+    function esc(v) {
+      var t = (v || '').replace(/\s+/g, ' ').trim();
+      return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    }
+    var rows = [];
+    Array.prototype.forEach.call(table.rows, function (row) {
+      var cells = [];
+      Array.prototype.forEach.call(row.cells, function (c) { cells.push(esc(c.textContent)); });
+      rows.push(cells.join(','));
+    });
+    return '\ufeff' + rows.join('\n');
+  };
+
   U.downloadUrl = function (url, filename) {
     var name = filename || (String(url).split('/').pop() || 'download').split('?')[0];
     function fallback() {
