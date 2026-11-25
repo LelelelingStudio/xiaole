@@ -31,14 +31,26 @@
 <body>
   <div class="card">
     <h1>小了 SDK 测试页</h1>
-    <p>右下角是小了，点它就能聊天</p>
+    <p>点右下角（或左下角）的小了就能聊天</p>
+    <p class="hint">URL 加 <code>?anchor=left</code> 可切到左边站位，加 <code>?anchor=right</code> 切回右边</p>
   </div>
 
-  <!-- 接入方式：就这一段。后端地址走默认；本地联调可在 URL 上加 ?xl_api=http://127.0.0.1:8899/api -->
-  <script
-    src="./sdk/xiaole.js"
-    data-preset="default"
-    data-size="210"
-  ></script>
+  <style>
+    .hint { margin-top: 8px; font-size: 12px; color: #93a0b8; }
+    .hint code { background: #eef3ff; padding: 1px 5px; border-radius: 5px; }
+  </style>
+
+  <!-- 接入方式：就这一段。站位用 data-anchor="left|right" 让宿主自己选 -->
+  <script>
+    (function () {
+      var anchor = (new URLSearchParams(location.search).get('anchor') || 'right').toLowerCase();
+      var s = document.createElement('script');
+      s.src = './sdk/xiaole.js';
+      s.setAttribute('data-preset', 'default');
+      s.setAttribute('data-size', '210');
+      s.setAttribute('data-anchor', anchor === 'left' ? 'left' : 'right');
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
 </html>

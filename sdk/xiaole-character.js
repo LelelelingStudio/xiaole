@@ -32,7 +32,13 @@
     root.id = 'xl-character';
     root.style.width = C.character.size + 'px';
     root.style.height = C.character.size + 'px';
-    root.style.right = C.character.right + 'px';
+    if (C.character.anchor === 'left') {
+      root.style.left = C.character.left + 'px';
+      root.style.right = 'auto';
+    } else {
+      root.style.right = C.character.right + 'px';
+      root.style.left = 'auto';
+    }
     root.style.bottom = C.character.bottom + 'px';
 
     document.body.appendChild(root);

@@ -152,6 +152,7 @@
     document.body.appendChild(menuEl);
 
     menuEl.addEventListener('click', function (e) {
+      e.stopPropagation(); // 别让 document 的“点空白关闭”把刚打开的面板关掉
       var item = e.target.closest('.xl-menu-item');
       if (!item) return;
       var action = item.getAttribute('data-action');
@@ -219,11 +220,15 @@
       UI.toggle();
     });
 
-    // 点页面其他地方收起菜单
-    document.addEventListener('click', function () {
+    // 点页面其他地方收起菜单 / 历史面板
+    document.addEventListener('click', function (e) {
       if (UI.closeMenu._opened) {
         UI.closeMenu();
         UI.closeMenu._opened = false;
+      }
+      var panel = document.getElementById('xl-history');
+      if (panel && !panel.contains(e.target)) {
+        panel.parentNode.removeChild(panel);
       }
     });
 
@@ -614,6 +619,7 @@
     UI.setLocked(false);
     UI.hideTip();
     U.sound.play('open');
+    UI.open();
   };
 
   /* ================= 多对话（与网页版共享同一份本地记录） ================= */
@@ -665,6 +671,7 @@
     var panel = document.getElementById('xl-history');
     if (panel) { panel.parentNode.removeChild(panel); return; }
 
+    // 面板独立浮层：聊天框收起时也能看到，位置跟着角色/聊天框走
     panel = U.el('div', 'xl-history');
     panel.id = 'xl-history';
     var convs = U.convs.all();
@@ -681,7 +688,17 @@
       }).join('');
     }
 
-    bubble.appendChild(panel);
+    document.body.appendChild(panel);
+
+    var isLeft = C.character.anchor === 'left';
+    var size = Math.min(C.character.size || 160, 210);
+    panel.style.width = '232px';
+    if (isLeft) {
+      panel.style.left = ((C.character.left || 24) + 8) + 'px';
+    } else {
+      panel.style.right = ((C.character.right || 24) + 8) + 'px';
+    }
+    panel.style.bottom = ((C.character.bottom || 24) + size - 40) + 'px';
 
     panel.addEventListener('click', function (e) {
       var item = e.target.closest('.xl-history-item');
@@ -692,6 +709,7 @@
       UI.clearMessages();
       UI.restoreConv();
       if (panel.parentNode) panel.parentNode.removeChild(panel);
+      UI.open(); // 保证点完就能看到内容
     });
   };
 

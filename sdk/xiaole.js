@@ -32,6 +32,7 @@
   var zIndex = script ? script.getAttribute('data-zindex') : null;
   var apiOverride = script ? script.getAttribute('data-api') : null; // 仅本地联调使用
   var sizeOverride = script ? script.getAttribute('data-size') : null;
+  var anchorOverride = script ? script.getAttribute('data-anchor') : null; // left / right
 
   /* ================= 依赖加载 ================= */
 
@@ -223,6 +224,16 @@
     var Character = NS.character;
 
     if (zIndex) NS.config.ui.zIndex = parseInt(zIndex, 10) || NS.config.ui.zIndex;
+
+    // 站位：right（默认右下） / left（左下）
+    var anchor = (anchorOverride || NS.config.character.anchor || 'right').toLowerCase();
+    if (anchor === 'left') {
+      NS.config.character.anchor = 'left';
+      if (document.body) document.body.classList.add('xl-anchor-left');
+    } else {
+      NS.config.character.anchor = 'right';
+      if (document.body) document.body.classList.remove('xl-anchor-left');
+    }
 
     return loadPreset()
       .then(function (productPrompt) {

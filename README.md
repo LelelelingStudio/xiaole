@@ -21,10 +21,20 @@
 | `data-preset` | 否 | 产品标识，对应 `presets/<name>.json` 里的专属提示词。不填 = `default` |
 | `data-zindex` | 否 | 自定义层级，默认 9999 |
 | `data-size` | 否 | 角色尺寸 px，默认 160，范围 80–400 |
+| `data-anchor` | 否 | 站位：`right`（默认，右下角）或 `left`（左下角）；聊天框、右键菜单、历史面板、复位圆点会一起镜像 |
 | `data-allow-all` | 否 | `true` 时跳过域名白名单校验（仅本地调试） |
 | `data-api` | 否 | 覆盖后端地址（仅本地联调，例如本地代理） |
 
 宿主不需要引入 css、不需要拼提示词、不需要操作角色 DOM。
+
+站位示例：
+
+```html
+<!-- 右下角（默认） -->
+<script src="https://xiaole.leleleling.site/sdk/xiaole.js" data-preset="read"></script>
+<!-- 左下角 -->
+<script src="https://xiaole.leleleling.site/sdk/xiaole.js" data-preset="read" data-anchor="left"></script>
+```
 
 ---
 
@@ -162,6 +172,8 @@ http://127.0.0.1:8899/index.html?api=http://127.0.0.1:8899/api
 - 非白名单域名 ⇒ 只显示「这个域名不属于了了了岭工作室的官方域名」，不渲染角色
 - 域名通过后额外做一次 `/chat` OPTIONS 预检，跨域被拦时控制台告警，不会等用户发消息才失败
 - 聊天框内置生图面板（`画` 按钮）：次数提示、生成中状态、结果图 + 保存链接
+- 站位可配置：`data-anchor="left"` 左下角 / 默认右下角，聊天框与右键菜单一起镜像
+- 站点自带 `404.html`（云朵 + 「小」形象 + 回首页/演示页/产品入口）
 
 ---
 
@@ -185,6 +197,7 @@ Xiaole.generateImage({ prompt: '一只猫' });
 注意两点：
 - 仓库根目录放了 `.nojekyll`，避免 GitHub Pages 走 Jekyll 处理带下划线/静态资源路径。
 - 所有资源使用相对路径（`./sdk/xx.js`、`./assets/layers/...`），因此 Pages 子路径部署也不会 404。
+- 根目录 `404.html` 即自定义 404 页，Pages 会自动用于所有不存在的路径（含子路径）。
 
 跑一次完整回归：
 

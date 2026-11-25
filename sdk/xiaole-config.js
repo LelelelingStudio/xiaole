@@ -100,7 +100,10 @@
     // ===== 角色参数 =====
     character: {
       size: 160,
+      // 站位：'right' 右下角（默认） / 'left' 左下角；宿主可用 <script data-anchor="left"> 覆盖
+      anchor: 'right',
       right: 24,
+      left: 24,
       bottom: 24,
       defaultGender: 'girl',
       // 静态整体图（当前默认使用）：一张完整的全身立绘
