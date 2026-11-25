@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>小了 SDK · 本地测试</title>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: linear-gradient(160deg, #f4f8ff, #eaf1ff 55%, #eef6ff);
+      color: #2c3550;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .card {
+      background: rgba(255,255,255,.8);
+      border-radius: 20px;
+      padding: 28px 34px;
+      box-shadow: 0 12px 32px rgba(80,110,180,.12);
+      text-align: center;
+    }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    p { margin: 0; color: #7b869c; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>小了 SDK 测试页</h1>
+    <p>右下角是小了，点它就能聊天</p>
+  </div>
+
+  <!-- 接入方式：就这一段。后端地址走默认；本地联调可在 URL 上加 ?xl_api=http://127.0.0.1:8899/api -->
+  <script
+    src="./sdk/xiaole.js"
+    data-preset="default"
+    data-size="210"
+  ></script>
+</body>
+</html>

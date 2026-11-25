@@ -1,0 +1,545 @@
+/*!
+ * 小了 SDK - UI 层
+ * 云朵聊天框 / 消息渲染 / 打字机 / 右键菜单 / 隐藏后复位小圆点
+ */
+(function () {
+  'use strict';
+
+  var NS = (window.Xiaole = window.Xiaole || {});
+  var C = NS.config;
+  var U = NS.utils;
+  var Chat = NS.chat;
+
+  var UI = (NS.ui = {});
+
+  var bubble = null;      // 云朵聊天框
+  var listEl = null;      // 消息列表
+  var inputEl = null;
+  var sendBtn = null;
+  var newChatBtn = null;
+  var menuEl = null;
+  var dotEl = null;
+  var tipEl = null;
+  var imagePanel = null;
+  var imagePromptEl = null;
+  var imageGenBtn = null;
+  var imageCountEl = null;
+  var open = false;
+
+  // 打字机状态
+  var typing = null; // { el, queue, timer, cursor }
+
+  /* ================= 初始化 ================= */
+
+  UI.init = function () {
+    buildBubble();
+    buildMenu();
+    buildResetDot();
+    bindGlobal();
+    renderWelcome();
+    syncImageCount();
+    return Promise.resolve();
+  };
+
+  /* ================= 云朵聊天框 ================= */
+
+  function buildBubble() {
+    bubble = U.el('div', 'xl-cloud');
+    bubble.id = 'xl-cloud';
+
+    var header = U.el('div', 'xl-cloud-header');
+    header.innerHTML =
+      '<div class="xl-cloud-title"><span class="xl-dot-live"></span>' + C.name + '</div>' +
+      '<div class="xl-cloud-actions">' +
+      '<button class="xl-icon-btn" id="xl-new-chat" title="' + C.text.newChat + '">＋</button>' +
+      '<button class="xl-icon-btn" id="xl-close" title="收起">×</button>' +
+      '</div>';
+
+    listEl = U.el('div', 'xl-cloud-messages');
+    listEl.id = 'xl-messages';
+
+    var footer = U.el('div', 'xl-cloud-footer');
+    footer.innerHTML =
+      '<button class="xl-icon-btn xl-image-toggle" id="xl-image-toggle" title="生成图片">画</button>' +
+      '<input class="xl-input" id="xl-input" type="text" autocomplete="off" placeholder="' +
+      C.text.placeholder + '" />' +
+      '<button class="xl-send" id="xl-send">' + C.text.send + '</button>';
+
+    // 生图面板（默认收起）
+    imagePanel = U.el('div', 'xl-image-panel');
+    imagePanel.id = 'xl-image-panel';
+    imagePanel.innerHTML =
+      '<div class="xl-image-head"><span>画一张图</span>' +
+      '<span class="xl-image-count" id="xl-image-count"></span></div>' +
+      '<textarea class="xl-image-input" id="xl-image-prompt" rows="2" placeholder="描述你想要的画面，例如：一只在窗台上的橘猫"></textarea>' +
+      '<div class="xl-image-actions">' +
+      '<button class="xl-image-cancel" id="xl-image-cancel">取消</button>' +
+      '<button class="xl-image-gen" id="xl-image-gen">生成</button>' +
+      '</div>';
+
+    tipEl = U.el('div', 'xl-tip');
+    tipEl.id = 'xl-tip';
+
+    bubble.appendChild(header);
+    bubble.appendChild(listEl);
+    bubble.appendChild(tipEl);
+    bubble.appendChild(imagePanel);
+    bubble.appendChild(footer);
+    document.body.appendChild(bubble);
+
+    inputEl = bubble.querySelector('#xl-input');
+    sendBtn = bubble.querySelector('#xl-send');
+    newChatBtn = bubble.querySelector('#xl-new-chat');
+    imagePanel = bubble.querySelector('#xl-image-panel');
+    imagePromptEl = bubble.querySelector('#xl-image-prompt');
+    imageGenBtn = bubble.querySelector('#xl-image-gen');
+    imageCountEl = bubble.querySelector('#xl-image-count');
+
+    bubble.querySelector('#xl-image-toggle').addEventListener('click', function () {
+      UI.toggleImagePanel();
+    });
+    bubble.querySelector('#xl-image-cancel').addEventListener('click', function () {
+      UI.toggleImagePanel(false);
+    });
+    imageGenBtn.addEventListener('click', submitImage);
+    imagePromptEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        submitImage();
+      }
+    });
+
+    sendBtn.addEventListener('click', submit);
+    newChatBtn.addEventListener('click', function () {
+      UI.newChat();
+    });
+    bubble.querySelector('#xl-close').addEventListener('click', function () {
+      UI.close();
+    });
+
+    inputEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        submit();
+      }
+    });
+
+    // 点聊天框内部不触发外部关闭
+    bubble.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+    bubble.addEventListener('contextmenu', function (e) {
+      e.stopPropagation();
+    });
+  }
+
+  /* ================= 右键菜单 ================= */
+
+  function buildMenu() {
+    menuEl = U.el('div', 'xl-menu');
+    menuEl.id = 'xl-menu';
+    menuEl.innerHTML =
+      '<div class="xl-menu-item" data-action="gender">' + C.text.menuGender + '</div>' +
+      '<div class="xl-menu-item" data-action="new-chat">' + C.text.menuNewChat + '</div>' +
+      '<div class="xl-menu-item" data-action="sound">' + C.text.menuSound +
+      '<span class="xl-menu-state" id="xl-sound-state"></span></div>' +
+      '<div class="xl-menu-item" data-action="hide">' + C.text.menuHide + '</div>';
+
+    document.body.appendChild(menuEl);
+
+    menuEl.addEventListener('click', function (e) {
+      var item = e.target.closest('.xl-menu-item');
+      if (!item) return;
+      var action = item.getAttribute('data-action');
+      UI.closeMenu();
+
+      if (action === 'gender') {
+        NS.character.toggleGender();
+      } else if (action === 'hide') {
+        UI.close();
+        NS.character.hide();
+      } else if (action === 'new-chat') {
+        UI.newChat();
+      } else if (action === 'sound') {
+        var on = U.sound.toggle();
+        UI.syncSoundState();
+        if (on) U.sound.play('open');
+      }
+    });
+
+    UI.syncSoundState();
+  }
+
+  UI.syncSoundState = function () {
+    var el = document.getElementById('xl-sound-state');
+    if (el) el.textContent = U.sound.enabled() ? '开' : '关';
+  };
+
+  UI.openMenu = function (x, y) {
+    if (!menuEl) return;
+    menuEl.classList.add('xl-show');
+    var rect = menuEl.getBoundingClientRect();
+    var left = Math.min(x, window.innerWidth - rect.width - 8);
+    var top = Math.min(y, window.innerHeight - rect.height - 8);
+    menuEl.style.left = Math.max(8, left) + 'px';
+    menuEl.style.top = Math.max(8, top) + 'px';
+    UI.closeMenu._opened = true;
+  };
+
+  UI.closeMenu = function () {
+    if (menuEl) menuEl.classList.remove('xl-show');
+  };
+
+  /* ================= 复位小圆点 ================= */
+
+  function buildResetDot() {
+    dotEl = U.el('div', 'xl-reset-dot');
+    dotEl.id = 'xl-reset-dot';
+    dotEl.title = C.text.showAgain;
+    document.body.appendChild(dotEl);
+
+    dotEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      NS.character.show();
+      U.sound.play('open');
+    });
+  }
+
+  /* ================= 全局事件 ================= */
+
+  function bindGlobal() {
+    // 角色点击 → 开合聊天框
+    window.addEventListener('xiaole:toggle-chat', function () {
+      UI.toggle();
+    });
+
+    // 点页面其他地方收起菜单
+    document.addEventListener('click', function () {
+      if (UI.closeMenu._opened) {
+        UI.closeMenu();
+        UI.closeMenu._opened = false;
+      }
+    });
+
+    // 上下文超限
+    window.addEventListener('xiaole:context-full', function () {
+      UI.showTip(C.text.limitTip, true);
+    });
+
+    // 新对话
+    window.addEventListener('xiaole:new-session', function () {
+      UI.clearMessages();
+      renderWelcome();
+      UI.setLocked(false);
+    });
+  }
+
+  /* ================= 开合 ================= */
+
+  UI.open = function () {
+    if (open) return;
+    open = true;
+    bubble.classList.add('xl-open');
+    U.sound.play('open');
+    setTimeout(function () {
+      if (inputEl) inputEl.focus();
+      scrollToBottom();
+    }, 180);
+    U.emit('open');
+  };
+
+  UI.close = function () {
+    if (!open) return;
+    open = false;
+    bubble.classList.remove('xl-open');
+    U.sound.play('close');
+    U.emit('close');
+  };
+
+  UI.toggle = function () {
+    if (open) UI.close();
+    else UI.open();
+    return open;
+  };
+
+  UI.isOpen = function () {
+    return open;
+  };
+
+  /* ================= 消息渲染 ================= */
+
+  function scrollToBottom() {
+    if (!listEl) return;
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  UI.clearMessages = function () {
+    if (typing && typing.timer) clearInterval(typing.timer);
+    typing = null;
+    if (listEl) listEl.innerHTML = '';
+  };
+
+  // 本地欢迎语（不进入上下文，不请求后端）
+  function renderWelcome() {
+    var text = C.welcome[Math.floor(Math.random() * C.welcome.length)];
+    addMessage('assistant', text, { local: true, instant: true });
+  }
+
+  function addMessage(role, text, opts) {
+    opts = opts || {};
+    var wrap = U.el('div', 'xl-msg xl-msg-' + role);
+    var avatar = U.el('div', 'xl-avatar', role === 'user' ? '你' : '<span>小</span>');
+    var body = U.el('div', 'xl-msg-body');
+    var content = U.el('div', 'xl-msg-text');
+
+    if (opts.instant) {
+      content.innerHTML = U.toHtml(text);
+    }
+
+    body.appendChild(content);
+    wrap.appendChild(avatar);
+    wrap.appendChild(body);
+    listEl.appendChild(wrap);
+    scrollToBottom();
+
+    if (opts.instant) {
+      return { wrap: wrap, content: content, finish: function () {} };
+    }
+
+    // 打字机：先建一个空节点，流式追加
+    var queue = '';
+    var printed = '';
+    var finished = false;
+    var cursor = U.el('span', 'xl-cursor');
+    content.appendChild(cursor);
+
+    var speed = Math.max(1, C.chat.typeSpeed || 3);
+    var interval = Math.round(1000 / speed);
+
+    typing = {
+      el: content,
+      cursor: cursor,
+      timer: setInterval(function () {
+        if (queue.length > 0) {
+          var take = 1;
+          printed += queue.slice(0, take);
+          queue = queue.slice(take);
+          content.innerHTML = U.toHtml(printed) + '<span class="xl-cursor"></span>';
+          scrollToBottom();
+        } else if (finished) {
+          clearInterval(typing.timer);
+          typing = null;
+          content.innerHTML = U.toHtml(printed);
+          scrollToBottom();
+        }
+      }, interval)
+    };
+
+    return {
+      wrap: wrap,
+      content: content,
+      push: function (piece) {
+        queue += piece;
+      },
+      finish: function () {
+        finished = true;
+      },
+      isDone: function () {
+        return finished && !queue.length;
+      }
+    };
+  }
+
+  function showLoading() {
+    var wrap = U.el('div', 'xl-msg xl-msg-assistant xl-loading');
+    wrap.innerHTML =
+      '<div class="xl-avatar"><span>小</span></div>' +
+      '<div class="xl-msg-body"><div class="xl-msg-text">' +
+      '<span class="xl-spinner"><i></i></span>' +
+      '</div></div>';
+    listEl.appendChild(wrap);
+    scrollToBottom();
+    return wrap;
+  }
+
+  /* ================= 提示条 ================= */
+
+  UI.showTip = function (text, sticky) {
+    if (!tipEl) return;
+    tipEl.textContent = text;
+    tipEl.classList.add('xl-show');
+    if (!sticky) {
+      setTimeout(function () {
+        tipEl.classList.remove('xl-show');
+      }, 3000);
+    }
+  };
+
+  UI.hideTip = function () {
+    if (tipEl) tipEl.classList.remove('xl-show');
+  };
+
+  /* ================= 锁定输入（上下文满）================= */
+
+  UI.setLocked = function (locked) {
+    if (!inputEl) return;
+    inputEl.disabled = locked;
+    sendBtn.disabled = locked;
+    if (locked) {
+      inputEl.classList.add('xl-locked');
+      UI.showTip(C.text.limitTip, true);
+    } else {
+      inputEl.classList.remove('xl-locked');
+      UI.hideTip();
+    }
+  };
+
+  /* ================= 生图面板 ================= */
+
+  function syncImageCount() {
+    if (!imageCountEl || !NS.image) return;
+    var n = NS.image.remaining();
+    imageCountEl.textContent = n > 0 ? '今日剩余 ' + n + ' 次' : '今日次数已用完';
+    if (imageGenBtn) imageGenBtn.disabled = n <= 0;
+  }
+
+  UI.toggleImagePanel = function (force) {
+    if (!imagePanel) return;
+    var show =
+      force === undefined ? !imagePanel.classList.contains('xl-show') : !!force;
+    if (show) imagePanel.classList.add('xl-show');
+    else imagePanel.classList.remove('xl-show');
+    if (show) {
+      syncImageCount();
+      setTimeout(function () {
+        if (imagePromptEl) imagePromptEl.focus();
+      }, 200);
+    }
+  };
+
+  function addImageMessage(res) {
+    var display = res.display || res.url || '';
+    var save = res.save || res.url || display;
+    var overlay = res.mode === 'overlay';
+    var wrap = U.el('div', 'xl-msg xl-msg-assistant');
+    wrap.innerHTML =
+      '<div class="xl-avatar"><span>小</span></div>' +
+      '<div class="xl-msg-body xl-msg-image">' +
+      '<span class="xl-img-wrap">' +
+      '<img src="' + display + '" alt="生成图片" />' +
+      (overlay ? '<span class="xl-img-wm">' + C.image.watermark.text + '</span>' : '') +
+      '</span>' +
+      '<a class="xl-img-download" href="' + save + '" download="xiaole.png">保存图片</a>' +
+      '</div>';
+    listEl.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function submitImage() {
+    if (!NS.image) return;
+    var prompt = (imagePromptEl.value || '').trim();
+    if (!prompt) {
+      UI.showTip('先写一句画面描述吧');
+      return;
+    }
+    if (!NS.image.canGenerate()) {
+      UI.showTip(C.text.imageLimitTip, true);
+      syncImageCount();
+      return;
+    }
+
+    imageGenBtn.disabled = true;
+    imageGenBtn.textContent = '生成中…';
+    addMessage('user', '画一张图：' + prompt, { instant: true });
+    var loading = showLoading();
+
+    NS.image
+      .generate({ prompt: prompt })
+      .then(function (res) {
+        if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
+        addImageMessage(res);
+        imageGenBtn.disabled = false;
+        imageGenBtn.textContent = '生成';
+        imagePromptEl.value = '';
+        syncImageCount();
+        UI.hideTip();
+      })
+      .catch(function (err) {
+        if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
+        addMessage('assistant', (err && err.message) || C.text.errorMsg, { instant: true });
+        imageGenBtn.disabled = false;
+        imageGenBtn.textContent = '生成';
+        syncImageCount();
+      });
+  }
+
+  /* ================= 发送 ================= */
+
+  function submit() {
+    if (Chat.session.busy) return;
+    var text = (inputEl.value || '').trim();
+    if (!text) return;
+
+    inputEl.value = '';
+    addMessage('user', text, { instant: true });
+
+    var loading = showLoading();
+    var assistant = null;
+
+    Chat.send(text, {
+      onDelta: function (piece, done) {
+        if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
+        loading = null;
+
+        if (!assistant) assistant = addMessage('assistant', '', {});
+        if (piece) assistant.push(piece);
+        if (done) assistant.finish();
+      },
+      onLimit: function (msg) {
+        if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
+        loading = null;
+        UI.setLocked(true);
+        UI.showTip(msg, true);
+      },
+      onDone: function () {
+        if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
+        loading = null;
+        if (assistant) assistant.finish();
+        UI.hideTip();
+      },
+      onError: function () {
+        if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
+        loading = null;
+        addMessage('assistant', C.text.errorMsg, { instant: true });
+      }
+    });
+  }
+
+  /* ================= 新对话 ================= */
+
+  UI.newChat = function () {
+    Chat.newSession();
+    UI.setLocked(false);
+    U.sound.play('open');
+  };
+
+  /* ================= 历史恢复 ================= */
+
+  UI.restoreHistory = function () {
+    var msgs = Chat.session.messages || [];
+    if (!msgs.length) {
+      renderWelcome();
+      return;
+    }
+    var shown = 0;
+    msgs.forEach(function (m) {
+      if (m.role === 'system' || m.local) return;
+      addMessage(m.role, m.content, { instant: true });
+      shown++;
+    });
+    if (!shown) renderWelcome();
+    if (Chat.measure() >= C.chat.maxContextChars) {
+      UI.setLocked(true);
+    }
+  };
+})();

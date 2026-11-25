@@ -1,0 +1,1 @@
+把分层素材放这里：01_back_hair / 02_body / 03_face_base / 04_iris / 05_blush / 06_front_hair / 07_accessory / 08_happy（512×512 透明 PNG，同姿势同中心点）

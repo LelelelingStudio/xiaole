@@ -1,0 +1,660 @@
+/*!
+ * 小了 SDK - 样式
+ * 全部挂 xl- 前缀，避免污染宿主页面
+ */
+
+/* ================= 角色 ================= */
+
+.xl-character {
+  position: fixed;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+  transform-origin: bottom right;
+  z-index: 9999;
+  filter: drop-shadow(0 8px 18px rgba(90, 120, 190, 0.22));
+}
+
+.xl-character.xl-hidden {
+  opacity: 0;
+  transform: scale(0.6) translateY(10px);
+  pointer-events: none;
+}
+
+.xl-character.xl-fade {
+  animation: xl-gender-fade 0.32s ease both;
+}
+
+@keyframes xl-gender-fade {
+  0% { opacity: 1; filter: blur(0); }
+  45% { opacity: 0.35; filter: blur(2px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+.xl-character-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/* 呼吸：轻微上下 + 缩放 */
+.xl-character:not(.xl-hidden) .xl-character-img {
+  animation: xl-breathe 4.2s ease-in-out infinite;
+}
+
+@keyframes xl-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.008); }
+}
+
+/* 分层模式图层堆叠 */
+.xl-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.xl-layer-04_iris {
+  transition: transform 0.18s ease-out;
+}
+
+/* 占位（素材缺失时） */
+.xl-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(150deg, #eaf2ff, #dfe9ff);
+  color: #7a97d6;
+  font-size: 28px;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+
+/* ================= 云朵聊天框 ================= */
+
+.xl-cloud {
+  position: fixed;
+  right: 24px;
+  bottom: 184px;
+  width: 340px;
+  height: 470px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 220px);
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 30px 36px 32px 34px / 34px 30px 36px 30px;
+  box-shadow: 0 16px 40px rgba(80, 110, 180, 0.18), 0 0 0 1px rgba(200, 216, 255, 0.5) inset;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(14px) scale(0.94);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.34, 1.25, 0.64, 1);
+  z-index: 9998;
+  animation: xl-blob 9s ease-in-out infinite;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+}
+
+.xl-cloud.xl-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* 云朵形变：圆角缓慢呼吸，幅度克制，不影响阅读与点击 */
+@keyframes xl-blob {
+  0%, 100% { border-radius: 30px 36px 32px 34px / 34px 30px 36px 30px; }
+  33%      { border-radius: 38px 28px 34px 30px / 30px 36px 30px 34px; }
+  66%      { border-radius: 28px 34px 28px 38px / 36px 30px 34px 28px; }
+}
+
+.xl-cloud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 8px;
+  flex-shrink: 0;
+}
+
+.xl-cloud-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3550;
+  letter-spacing: 0.5px;
+}
+
+.xl-dot-live {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94b8ff;
+  box-shadow: 0 0 0 0 rgba(148, 184, 255, 0.7);
+  animation: xl-live 2s ease-out infinite;
+}
+
+@keyframes xl-live {
+  0% { box-shadow: 0 0 0 0 rgba(148, 184, 255, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(148, 184, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(148, 184, 255, 0); }
+}
+
+.xl-cloud-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.xl-icon-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #8b97b8;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xl-icon-btn:hover {
+  background: #eef3ff;
+  color: #7a97d6;
+}
+
+/* 消息区 */
+.xl-cloud-messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 6px 22px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #dbe4ff transparent;
+}
+
+.xl-cloud-messages::-webkit-scrollbar { width: 6px; }
+.xl-cloud-messages::-webkit-scrollbar-thumb {
+  background: #dbe4ff;
+  border-radius: 3px;
+}
+
+.xl-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  animation: xl-msg-in 0.24s ease both;
+}
+
+@keyframes xl-msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.xl-msg-user {
+  flex-direction: row-reverse;
+}
+
+.xl-avatar {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(150deg, #eaf2ff, #dfe9ff);
+  color: #7a97d6;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.xl-msg-user .xl-avatar {
+  background: linear-gradient(150deg, #dbe8ff, #c9dbff);
+  color: #4a6fae;
+}
+
+.xl-msg-body {
+  max-width: 78%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: #f5f8ff;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c3550;
+  word-break: break-word;
+}
+
+.xl-msg-assistant .xl-msg-body {
+  border-top-left-radius: 5px;
+}
+
+.xl-msg-user .xl-msg-body {
+  background: linear-gradient(150deg, #7a97d6, #93b0e6);
+  color: #fff;
+  border-top-right-radius: 5px;
+}
+
+.xl-msg-text { white-space: normal; }
+
+.xl-code {
+  background: #eef3ff;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  overflow-x: auto;
+  margin: 6px 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.xl-inline-code {
+  background: #eef3ff;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 12px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* 打字机光标 */
+.xl-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 13px;
+  margin-left: 2px;
+  background: #7a97d6;
+  vertical-align: -2px;
+  animation: xl-blink 1s steps(2, start) infinite;
+}
+
+@keyframes xl-blink {
+  to { visibility: hidden; }
+}
+
+/* loading */
+.xl-loading .xl-msg-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.xl-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(148, 184, 255, 0.25);
+  border-top-color: #94b8ff;
+  animation: xl-spin 0.9s linear infinite;
+}
+
+@keyframes xl-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 提示条 */
+.xl-tip {
+  margin: 0 22px 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff4e6;
+  color: #a06b32;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease, max-height 0.2s ease;
+}
+
+.xl-tip.xl-show {
+  opacity: 1;
+  max-height: 90px;
+}
+
+/* 输入区 */
+.xl-cloud-footer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px 20px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.xl-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  border: 1px solid #e2eaf8;
+  background: #fbfdff;
+  font-size: 13px;
+  color: #2c3550;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  font-family: inherit;
+}
+
+.xl-input::placeholder { color: #a8b3cc; }
+
+.xl-input:focus {
+  border-color: #b9cdf5;
+  box-shadow: 0 0 0 3px rgba(148, 184, 255, 0.15);
+}
+
+.xl-input.xl-locked {
+  background: #f2f4f8;
+  color: #a8b3cc;
+  cursor: not-allowed;
+}
+
+.xl-send {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: none;
+  background: linear-gradient(150deg, #7a97d6, #93b0e6);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(122, 151, 214, 0.3);
+}
+
+.xl-send:hover { transform: translateY(-1px); }
+.xl-send:active { transform: translateY(0) scale(0.98); }
+.xl-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ================= 右键菜单 ================= */
+
+.xl-menu {
+  position: fixed;
+  min-width: 132px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 24px rgba(60, 80, 130, 0.18);
+  opacity: 0;
+  transform: scale(0.92);
+  transform-origin: bottom right;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  pointer-events: none;
+  z-index: 10001;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.xl-menu.xl-show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.xl-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #2c3550;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.xl-menu-item:hover { background: #eef3ff; }
+
+.xl-menu-state {
+  font-size: 11px;
+  color: #8b97b8;
+}
+
+/* ================= 隐藏后的复位小圆点 ================= */
+
+.xl-reset-dot {
+  position: fixed;
+  right: 26px;
+  bottom: 26px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(150deg, #7a97d6, #93b0e6);
+  box-shadow: 0 2px 8px rgba(122, 151, 214, 0.5);
+  cursor: pointer;
+  z-index: 10000;
+  opacity: 0;
+  transform: scale(0.4);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.xl-reset-dot.xl-show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.xl-reset-dot:hover {
+  transform: scale(1.25);
+}
+
+/* ================= 未授权提示 ================= */
+
+.xl-unauthorized {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  max-width: 260px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  color: #7b8496;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(60, 80, 130, 0.16);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+}
+
+/* ================= 移动端适配 ================= */
+
+@media (max-width: 480px) {
+  .xl-cloud {
+    width: calc(100vw - 24px);
+    height: min(70vh, 460px);
+    right: 12px;
+    bottom: 150px;
+  }
+
+  .xl-character {
+    width: 110px !important;
+    height: 110px !important;
+    right: 14px !important;
+    bottom: 14px !important;
+  }
+}
+
+/* ================= 生图面板 ================= */
+
+.xl-image-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #e2eaf8;
+  background: #fbfdff;
+  color: #7a97d6;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.xl-image-toggle:hover {
+  background: #eef3ff;
+  border-color: #c6d8f8;
+}
+
+.xl-image-panel {
+  margin: 0 20px 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f3f7ff;
+  border: 1px solid #e2eaf8;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.24s ease, opacity 0.24s ease, padding 0.24s ease;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+}
+
+.xl-image-panel.xl-show {
+  max-height: 150px;
+  opacity: 1;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-width: 1px;
+}
+
+.xl-image-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #5a6a8c;
+  margin-bottom: 6px;
+}
+
+.xl-image-count {
+  font-size: 11px;
+  color: #93a1bd;
+}
+
+.xl-image-input {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid #e2eaf8;
+  background: #fff;
+  padding: 7px 9px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #2c3550;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+
+.xl-image-input:focus {
+  border-color: #b9cdf5;
+  box-shadow: 0 0 0 3px rgba(148, 184, 255, 0.12);
+}
+
+.xl-image-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.xl-image-cancel,
+.xl-image-gen {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.xl-image-cancel {
+  background: #e9eefb;
+  color: #6b7a99;
+}
+
+.xl-image-gen {
+  background: linear-gradient(150deg, #7a97d6, #93b0e6);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(122, 151, 214, 0.3);
+}
+
+.xl-image-gen:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.xl-msg-image {
+  padding: 8px;
+  background: #f5f8ff;
+}
+
+.xl-msg-image img {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  border-radius: 10px;
+}
+
+.xl-img-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  line-height: 0;
+}
+
+/* 图片来源未开 CORS 时，水印改为在图片上层叠加，保证肉眼可见 */
+.xl-img-wm {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+}
+
+.xl-img-download {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #7a97d6;
+  text-decoration: none;
+}
+
+.xl-img-download:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,1 @@
+静态整体图放这里：girl-static.png / boy-static.png，透明 PNG，完整人物居中。
