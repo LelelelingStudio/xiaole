@@ -36,7 +36,10 @@
     buildMenu();
     buildResetDot();
     bindGlobal();
-    renderWelcome();
+    bindListClick();
+    U.convs.migrate('chat-history-' + (C.state.preset || 'default'), '历史对话');
+    U.imgStore.gc();
+    UI.restoreConv();
     syncImageCount();
     return Promise.resolve();
   };
@@ -141,6 +144,7 @@
     menuEl.innerHTML =
       '<div class="xl-menu-item" data-action="gender">' + C.text.menuGender + '</div>' +
       '<div class="xl-menu-item" data-action="new-chat">' + C.text.menuNewChat + '</div>' +
+      '<div class="xl-menu-item" data-action="history">' + C.text.menuHistory + '</div>' +
       '<div class="xl-menu-item" data-action="sound">' + C.text.menuSound +
       '<span class="xl-menu-state" id="xl-sound-state"></span></div>' +
       '<div class="xl-menu-item" data-action="hide">' + C.text.menuHide + '</div>';
@@ -160,6 +164,8 @@
         NS.character.hide();
       } else if (action === 'new-chat') {
         UI.newChat();
+      } else if (action === 'history') {
+        UI.openHistory();
       } else if (action === 'sound') {
         var on = U.sound.toggle();
         UI.syncSoundState();
@@ -221,9 +227,9 @@
       }
     });
 
-    // 上下文超限
-    window.addEventListener('xiaole:context-full', function () {
-      UI.showTip(C.text.limitTip, true);
+    // 上下文超限：提示 + 带上下文去网页版继续
+    window.addEventListener('xiaole:context-full', function (ev) {
+      UI.showHandoff(ev && ev.detail);
     });
 
     // 新对话
@@ -233,6 +239,38 @@
       UI.setLocked(false);
     });
   }
+
+  /* ================= 上下文超限：带去网页版 ================= */
+
+  function encodeHandoff(messages) {
+    var trimmed = (messages || []).slice(-24).map(function (m) {
+      return { role: m.role, content: String(m.content || '').slice(0, 4000) };
+    });
+    var json = JSON.stringify(trimmed);
+    if (json.length > 60000) json = JSON.stringify(trimmed.slice(-8));
+    try {
+      return btoa(unescape(encodeURIComponent(json)));
+    } catch (e) {
+      return '';
+    }
+  }
+
+  UI.showHandoff = function (detail) {
+    UI.showTip(C.text.limitTip, true);
+    var tipEl = document.getElementById('xl-tip');
+    if (!tipEl) return;
+
+    var payload = encodeHandoff(detail && detail.messages);
+    var url = 'https://xiaole.leleleling.site/index.html' + (payload ? '#h=' + payload : '');
+
+    var link = document.createElement('a');
+    link.className = 'xl-handoff';
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = C.text.gotoPage;
+    tipEl.appendChild(link);
+  };
 
   /* ================= 开合 ================= */
 
@@ -417,6 +455,55 @@
     }
   };
 
+  /* ---- 大图弹窗（与网页版同款）---- */
+  var lb = null;
+
+  function showLightbox(src, dl) {
+    if (!lb) {
+      lb = U.el('div', 'xlp-lightbox');
+      lb.innerHTML =
+        '<div class="xlp-lightbox-mask"></div>' +
+        '<div class="xlp-lightbox-body"><img alt="查看图片" />' +
+        '<div class="xlp-lightbox-bar">' +
+        '<a class="xlp-lightbox-dl" download="xiaole.png">保存图片</a>' +
+        '<button class="xlp-lightbox-close">关闭</button></div></div>';
+      document.body.appendChild(lb);
+      lb.querySelector('.xlp-lightbox-mask').addEventListener('click', function () {
+        lb.classList.remove('on');
+      });
+      lb.querySelector('.xlp-lightbox-close').addEventListener('click', function () {
+        lb.classList.remove('on');
+      });
+    }
+    lb.querySelector('img').src = src;
+    lb.querySelector('.xlp-lightbox-dl').href = dl || src;
+    lb.classList.add('on');
+  }
+
+  function bindListClick() {
+    listEl.addEventListener('click', function (e) {
+      var img = e.target.closest ? e.target.closest('.xl-msg-image img') : null;
+      if (img) {
+        var body = img.closest('.xl-msg-image');
+        var dl = body && body.querySelector('.xl-img-download');
+        showLightbox(img.src, dl ? dl.href : img.src);
+        return;
+      }
+      var copyBtn = e.target.closest ? e.target.closest('.xl-copy') : null;
+      if (copyBtn) {
+        var block = copyBtn.closest('.xl-code-block');
+        var codeEl = block && block.querySelector('.xl-code');
+        if (codeEl) {
+          try {
+            navigator.clipboard.writeText(codeEl.textContent || '');
+            copyBtn.textContent = '已复制';
+            setTimeout(function () { copyBtn.textContent = '复制'; }, 1200);
+          } catch (err) {}
+        }
+      }
+    });
+  }
+
   function addImageMessage(res) {
     var display = res.display || res.url || '';
     var save = res.save || res.url || display;
@@ -482,6 +569,7 @@
 
     inputEl.value = '';
     addMessage('user', text, { instant: true });
+    U.convs.append({ role: 'user', content: text, type: 'text' });
 
     var loading = showLoading();
     var assistant = null;
@@ -501,10 +589,11 @@
         UI.setLocked(true);
         UI.showTip(msg, true);
       },
-      onDone: function () {
+      onDone: function (full) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
         loading = null;
         if (assistant) assistant.finish();
+        if (full) U.convs.append({ role: 'assistant', content: full, type: 'text' });
         UI.hideTip();
       },
       onError: function () {
@@ -519,25 +608,97 @@
 
   UI.newChat = function () {
     Chat.newSession();
+    U.convs.create('新对话', true);
+    UI.clearMessages();
+    renderWelcome();
     UI.setLocked(false);
+    UI.hideTip();
     U.sound.play('open');
+  };
+
+  /* ================= 多对话（与网页版共享同一份本地记录） ================= */
+
+  function chatContextFromConv(conv) {
+    Chat.newSession();
+    (conv && conv.messages || []).forEach(function (m) {
+      if (m.role === 'system' || !m.content) return;
+      Chat.session.messages.push({ role: m.role, content: m.content });
+    });
+  }
+
+  UI.restoreConv = function () {
+    var conv = U.convs.current();
+    if (!conv) conv = U.convs.create('新对话', true);
+    chatContextFromConv(conv);
+    UI.clearMessages();
+
+    var shown = 0;
+    (conv.messages || []).forEach(function (m) {
+      if (m.type === 'image') {
+        if (m.url) {
+          shown++;
+          (function (msg) {
+            var fallback = { id: msg.imgId, url: msg.url, display: msg.url, save: msg.url, mode: 'overlay' };
+            if (NS.image && NS.image.restore && msg.imgId) {
+              NS.image
+                .restore(msg.imgId, msg.url)
+                .then(function (res) {
+                  addImageMessage(res && res.display ? res : fallback);
+                })
+                .catch(function () {
+                  addImageMessage(fallback);
+                });
+            } else {
+              addImageMessage(fallback);
+            }
+          })(m);
+        }
+      } else if (m.content) {
+        addMessage(m.role, m.content, { instant: true });
+        shown++;
+      }
+    });
+    if (!shown) renderWelcome();
+  };
+
+  UI.openHistory = function () {
+    var panel = document.getElementById('xl-history');
+    if (panel) { panel.parentNode.removeChild(panel); return; }
+
+    panel = U.el('div', 'xl-history');
+    panel.id = 'xl-history';
+    var convs = U.convs.all();
+    var cur = U.convs.currentId();
+
+    if (!convs.length) {
+      panel.innerHTML = '<div class="xl-history-empty">' + C.text.convEmpty + '</div>';
+    } else {
+      panel.innerHTML = convs.map(function (c) {
+        return '<div class="xl-history-item' + (c.id === cur ? ' on' : '') + '" data-id="' + c.id + '">' +
+          '<span class="xl-history-title">' + U.escape(c.title || '新对话') + '</span>' +
+          '<span class="xl-history-meta">' + U.timeText(c.updatedAt) + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    bubble.appendChild(panel);
+
+    panel.addEventListener('click', function (e) {
+      var item = e.target.closest('.xl-history-item');
+      if (!item) return;
+      var conv = U.convs.switchTo(item.getAttribute('data-id'));
+      if (!conv) return;
+      chatContextFromConv(conv);
+      UI.clearMessages();
+      UI.restoreConv();
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+    });
   };
 
   /* ================= 历史恢复 ================= */
 
   UI.restoreHistory = function () {
-    var msgs = Chat.session.messages || [];
-    if (!msgs.length) {
-      renderWelcome();
-      return;
-    }
-    var shown = 0;
-    msgs.forEach(function (m) {
-      if (m.role === 'system' || m.local) return;
-      addMessage(m.role, m.content, { instant: true });
-      shown++;
-    });
-    if (!shown) renderWelcome();
+    // 历史统一由 UI.restoreConv（多对话存储）渲染，这里只同步上下文上限状态
     if (Chat.measure() >= C.chat.maxContextChars) {
       UI.setLocked(true);
     }

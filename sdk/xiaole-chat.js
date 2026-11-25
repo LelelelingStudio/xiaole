@@ -170,7 +170,7 @@
     // 上下文上限：直接拦下，不请求
     if (Chat.isContextFull(text)) {
       Chat.session.contextFull = true;
-      U.emit('context-full');
+      U.emit('context-full', { messages: buildRequestMessages() });
       if (handlers.onLimit) handlers.onLimit(C.text.limitTip);
       return Promise.resolve('');
     }

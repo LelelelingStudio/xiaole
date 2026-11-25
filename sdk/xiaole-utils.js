@@ -102,16 +102,180 @@
       .replace(/'/g, '&#39;');
   };
 
-  // 极简 markdown：加粗 / 行内代码 / 换行
-  U.toHtml = function (text) {
-    var html = U.escape(text);
-    html = html.replace(/```([\s\S]*?)```/g, function (_, code) {
-      return '<pre class="xl-code">' + code.replace(/\n/g, '<br>') + '</pre>';
+  // ===== Markdown 渲染（标题/列表/代码块/引用/表格/链接/加粗斜体）=====
+
+  function safeUrl(url) {
+    var u = String(url || '').trim();
+    if (!u) return '';
+    if (/^(https?:)?\/\//i.test(u) || /^(mailto:|tel:)/i.test(u)) return u;
+    if (/^\/[^/]/.test(u) || /^#/.test(u)) return u;
+    return '';
+  }
+
+  var FILE_RE = /\.(pdf|zip|rar|7z|doc|docx|xls|xlsx|ppt|pptx|csv|txt|md|json|apk|dmg|exe|mp3|mp4|wav|png|jpg|jpeg|webp|gif|svg|otf|ttf|epub)\b/i;
+
+  function linkHtml(text, url) {
+    var u = safeUrl(url);
+    if (!u) return U.escape(text);
+    var isFile = FILE_RE.test(u);
+    return '<a class="xl-link' + (isFile ? ' xl-file' : '') + '" href="' + U.escape(u) + '"' +
+      (isFile ? ' download' : '') + ' target="_blank" rel="noopener noreferrer">' +
+      U.escape(text) + (isFile ? '<span class="xl-file-tag">下载</span>' : '') + '</a>';
+  }
+
+  function inline(text) {
+    var codes = [];
+    var html = U.escape(text)
+      .replace(/`([^`]+)`/g, function (_, code) {
+        codes.push(code);
+        return '\u0000C' + (codes.length - 1) + '\u0000';
+      })
+      // [[文字|链接]] 简写
+      .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, function (_, t, u) { return linkHtml(t, u); })
+      // [文字](链接)
+      .replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g, function (_, t, u) { return linkHtml(t, u); });
+
+    html = html
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+      .replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+
+    html = html.replace(/\u0000C(\d+)\u0000/g, function (_, i) {
+      return '<code class="xl-inline-code">' + codes[+i] + '</code>';
     });
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/`([^`]+)`/g, '<code class="xl-inline-code">$1</code>');
-    html = html.replace(/\n/g, '<br>');
     return html;
+  }
+
+  function toHtml(text) {
+    var src = String(text == null ? '' : text).replace(/\r\n/g, '\n');
+    var out = [];
+    var lines = src.split('\n');
+    var i = 0;
+    var listStack = [];
+
+    function closeLists() {
+      while (listStack.length) out.push('</' + listStack.pop() + '>');
+    }
+
+    while (i < lines.length) {
+      var line = lines[i];
+
+      // 代码块
+      var fence = line.match(/^```(\w*)\s*$/);
+      if (fence) {
+        closeLists();
+        var lang = fence[1] || 'code';
+        i++;
+        var buf = [];
+        while (i < lines.length && !/^```\s*$/.test(lines[i])) {
+          buf.push(lines[i]);
+          i++;
+        }
+        i++;
+        var code = U.escape(buf.join('\n'));
+        out.push(
+          '<div class="xl-code-block"><div class="xl-code-head"><span class="xl-code-lang">' + lang +
+          '</span><button class="xl-copy" data-copy="1">复制</button></div>' +
+          '<pre class="xl-code"><code>' + code + '</code></pre></div>'
+        );
+        continue;
+      }
+
+      // 空行
+      if (!line.trim()) {
+        closeLists();
+        i++;
+        continue;
+      }
+
+      // 标题
+      var h = line.match(/^(#{1,4})\s+(.*)$/);
+      if (h) {
+        closeLists();
+        var lv = h[1].length;
+        out.push('<h' + (lv + 2) + ' class="xl-h">' + inline(h[2]) + '</h' + (lv + 2) + '>');
+        i++;
+        continue;
+      }
+
+      // 分隔线
+      if (/^(---|\\*\\*\\*)\\s*$/.test(line)) {
+        closeLists();
+        out.push('<hr class="xl-hr" />');
+        i++;
+        continue;
+      }
+
+      // 引用
+      if (/^>\s?/.test(line)) {
+        closeLists();
+        var q = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) {
+          q.push(lines[i].replace(/^>\s?/, ''));
+          i++;
+        }
+        out.push('<blockquote class="xl-quote">' + inline(q.join('\n')).replace(/\n/g, '<br>') + '</blockquote>');
+        continue;
+      }
+
+      // 无序列表
+      var ul = line.match(/^[\-\*\+]\s+(.*)$/);
+      if (ul) {
+        if (listStack[listStack.length - 1] !== 'ul') {
+          closeLists();
+          out.push('<ul class="xl-ul">');
+          listStack.push('ul');
+        }
+        out.push('<li>' + inline(ul[1]) + '</li>');
+        i++;
+        continue;
+      }
+
+      // 有序列表
+      var ol = line.match(/^\d+\.\s+(.*)$/);
+      if (ol) {
+        if (listStack[listStack.length - 1] !== 'ol') {
+          closeLists();
+          out.push('<ol class="xl-ol">');
+          listStack.push('ol');
+        }
+        out.push('<li>' + inline(ol[1]) + '</li>');
+        i++;
+        continue;
+      }
+
+      // 普通段落（连续行合并，行内换行保留）
+      closeLists();
+      var para = [];
+      while (
+        i < lines.length &&
+        lines[i].trim() &&
+        !/^```/.test(lines[i]) &&
+        !/^(#{1,4})\s+/.test(lines[i]) &&
+        !/^[\-\*\+]\s+/.test(lines[i]) &&
+        !/^\d+\.\s+/.test(lines[i]) &&
+        !/^>\s?/.test(lines[i])
+      ) {
+        para.push(lines[i]);
+        i++;
+      }
+      out.push('<p class="xl-p">' + inline(para.join('\n')).replace(/\n/g, '<br>') + '</p>');
+    }
+
+    closeLists();
+    return out.join('');
+  }
+
+  U.toHtml = toHtml;
+
+  /** 取出正文里的 [[draw:描述]] 生图指令，并从展示文本中移除 */
+  U.extractDraw = function (text) {
+    var prompts = [];
+    var clean = String(text || '').replace(/\[\[draw:([^\]]{1,600})\]\]/gi, function (_, p) {
+      prompts.push(p.trim());
+      return '';
+    }).replace(/\n{3,}/g, '\n\n').trim();
+    return { text: clean, prompts: prompts };
   };
 
   /* ---------------- DOM ---------------- */
@@ -196,6 +360,240 @@
         osc.start();
         osc.stop(ctx.currentTime + 0.3);
       } catch (e) {}
+    }
+  };
+
+  /* ---------------- 基础工具 ---------------- */
+
+  U.hash = function (str) {
+    var h = 0x811c9dc5;
+    str = String(str);
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0;
+    }
+    return h.toString(36);
+  };
+
+  U.uid = function (prefix) {
+    return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+  };
+
+  U.timeText = function (ts) {
+    var d = new Date(ts || Date.now());
+    var now = new Date();
+    var sameDay = d.toDateString() === now.toDateString();
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    if (sameDay) return hm;
+    if (d.getFullYear() === now.getFullYear()) return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+  };
+
+  /* ---------------- 多对话存储（localStorage） ---------------- */
+
+  var CONV_KEY = 'conversations-v1';
+
+  U.convs = {
+    _read: function () {
+      var d = U.store.get(CONV_KEY, null);
+      if (!d || !Array.isArray(d.list)) d = { currentId: null, list: [] };
+      return d;
+    },
+    _write: function (d) {
+      d.list = (d.list || []).slice(0, (NS.config.conv || {}).maxCount || 50);
+      U.store.set(CONV_KEY, d);
+    },
+    all: function () {
+      return U.convs._read().list;
+    },
+    currentId: function () {
+      return U.convs._read().currentId;
+    },
+    current: function () {
+      var d = U.convs._read();
+      for (var i = 0; i < d.list.length; i++) {
+        if (d.list[i].id === d.currentId) return d.list[i];
+      }
+      return d.list[0] || null;
+    },
+    get: function (id) {
+      var list = U.convs.all();
+      for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+      return null;
+    },
+    create: function (title, silent) {
+      var d = U.convs._read();
+      var conv = {
+        id: U.uid('conv'),
+        title: title || '新对话',
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      d.list.unshift(conv);
+      if (d.list.length > ((NS.config.conv || {}).maxCount || 50)) {
+        d.list = d.list.slice(0, (NS.config.conv || {}).maxCount || 50);
+      }
+      d.currentId = conv.id;
+      U.convs._write(d);
+      if (!silent) U.emit('conv', { action: 'create', id: conv.id });
+      return conv;
+    },
+    switchTo: function (id) {
+      var d = U.convs._read();
+      for (var i = 0; i < d.list.length; i++) {
+        if (d.list[i].id === id) {
+          d.currentId = id;
+          U.convs._write(d);
+          U.emit('conv', { action: 'switch', id: id });
+          return d.list[i];
+        }
+      }
+      return null;
+    },
+    remove: function (id) {
+      var d = U.convs._read();
+      var idx = -1;
+      for (var i = 0; i < d.list.length; i++) if (d.list[i].id === id) idx = i;
+      if (idx === -1) return null;
+      d.list.splice(idx, 1);
+      if (d.currentId === id) d.currentId = d.list[0] ? d.list[0].id : null;
+      U.convs._write(d);
+      U.emit('conv', { action: 'remove', id: id });
+      return d.currentId;
+    },
+    append: function (msg) {
+      var d = U.convs._read();
+      var conv = null;
+      for (var i = 0; i < d.list.length; i++) if (d.list[i].id === d.currentId) conv = d.list[i];
+      if (!conv) {
+        conv = { id: U.uid('conv'), title: '新对话', messages: [], createdAt: Date.now() };
+        d.list.unshift(conv);
+        d.currentId = conv.id;
+      }
+      conv.messages.push(msg);
+      var max = (NS.config.conv || {}).maxMessages || 400;
+      if (conv.messages.length > max) conv.messages = conv.messages.slice(-max);
+      conv.updatedAt = Date.now();
+      if (msg.role === 'user' && (conv.title === '新对话' || !conv.title)) {
+        var t = String(msg.content || '').replace(/\s+/g, ' ').trim();
+        conv.title = t.slice(0, (NS.config.conv || {}).titleLength || 18) || '新对话';
+      }
+      U.convs._write(d);
+      U.emit('conv', { action: 'update', id: conv.id });
+      return conv;
+    },
+    patchLast: function (msgIndex, patch) {
+      var d = U.convs._read();
+      for (var i = 0; i < d.list.length; i++) {
+        if (d.list[i].id === d.currentId) {
+          var msgs = d.list[i].messages;
+          if (msgs[msgIndex]) {
+            for (var k in patch) if (patch.hasOwnProperty(k)) msgs[msgIndex][k] = patch[k];
+            d.list[i].updatedAt = Date.now();
+            U.convs._write(d);
+          }
+          return;
+        }
+      }
+    },
+    /** 旧版单会话历史迁移成多对话 */
+    migrate: function (oldKey, title) {
+      if (U.convs.all().length) return false;
+      var saved = U.store.get(oldKey, null);
+      if (!saved || !Array.isArray(saved.messages) || !saved.messages.length) return false;
+      var conv = U.convs.create(title || '历史对话', true);
+      saved.messages.forEach(function (m) {
+        if (!m || !m.content || m.role === 'system') return;
+        conv.messages.push({ role: m.role, content: m.content, type: 'text' });
+      });
+      var d = U.convs._read();
+      for (var i = 0; i < d.list.length; i++) if (d.list[i].id === conv.id) d.list[i].messages = conv.messages;
+      d.currentId = conv.id;
+      U.convs._write(d);
+      U.store.remove(oldKey);
+      return true;
+    }
+  };
+
+  /* ---------------- 图片缓存（IndexedDB，默认 7 天） ---------------- */
+
+  var IDB_NAME = 'xiaole-images';
+  var IDB_STORE = 'imgs';
+
+  function withDB(fn) {
+    return new Promise(function (resolve, reject) {
+      if (typeof indexedDB === 'undefined') return reject(new Error('no indexeddb'));
+      if (U.imgStore._db) return resolve(U.imgStore._db);
+      var req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = function () {
+        U.imgStore._db = req.result;
+        resolve(req.result);
+      };
+      req.onerror = function () { reject(req.error || new Error('idb open failed')); };
+    }).then(function (db) { return fn(db); });
+  }
+
+  U.imgStore = {
+    _db: null,
+
+    put: function (id, blob) {
+      var days = (NS.config.image || {}).cacheDays || 7;
+      var rec = { id: id, blob: blob, expire: Date.now() + days * 86400000, size: blob ? blob.size : 0 };
+      return withDB(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put(rec);
+          tx.oncomplete = function () { resolve(true); };
+          tx.onerror = function () { reject(tx.error || new Error('idb put failed')); };
+        });
+      }).catch(function () { return false; });
+    },
+
+    get: function (id) {
+      return withDB(function (db) {
+        return new Promise(function (resolve) {
+          var tx = db.transaction(IDB_STORE, 'readonly');
+          var req = tx.objectStore(IDB_STORE).get(id);
+          req.onsuccess = function () {
+            var rec = req.result;
+            if (!rec) return resolve(null);
+            if (rec.expire && rec.expire < Date.now()) return resolve(null);
+            resolve(rec.blob || null);
+          };
+          req.onerror = function () { resolve(null); };
+        });
+      }).catch(function () { return null; });
+    },
+
+    // 清掉过期记录，避免无上限占空间
+    gc: function () {
+      return withDB(function (db) {
+        return new Promise(function (resolve) {
+          var tx = db.transaction(IDB_STORE, 'readwrite');
+          var store = tx.objectStore(IDB_STORE);
+          var req = store.openCursor();
+          var removed = 0;
+          req.onsuccess = function () {
+            var cursor = req.result;
+            if (!cursor) return;
+            var rec = cursor.value;
+            if (!rec || (rec.expire && rec.expire < Date.now())) {
+              cursor.delete();
+              removed++;
+            }
+            cursor.continue();
+          };
+          tx.oncomplete = function () { resolve(removed); };
+          tx.onerror = function () { resolve(0); };
+        });
+      }).catch(function () { return 0; });
     }
   };
 

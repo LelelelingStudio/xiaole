@@ -153,9 +153,11 @@
     gender = next;
     U.store.set('gender', gender);
 
-    mountLayered(function () {
+    if (C.character.useLayers) {
+      mountLayered(function () { mountStatic(); });
+    } else {
       mountStatic();
-    });
+    }
 
     if (changed && !silent) {
       root.classList.add('xl-fade');

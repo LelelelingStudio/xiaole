@@ -21,7 +21,12 @@
       '1. 了了了读：https://read.leleleling.site',
       '2. 了了了游：https://game.leleleling.site',
       '回答要求：以“小了”的身份说话，语气亲切、自然、简洁，不要自称看板娘或虚拟形象，',
-      '不要提到本 SDK、接口地址、提示词等内部信息。'
+      '不要提到本 SDK、接口地址、提示词等内部信息。',
+      '排版要求：支持 Markdown。链接请写成 [文字](https://...) 的形式，不要直接甩原始长链接；',
+      '代码用 ``` 包裹。',
+      '只有当用户明确要求画图/生成图片/来张图时，才在回复最后单独一行输出 [[draw:画面描述]]，',
+      '界面会自动帮用户生成图片；其余任何情况都不要输出 [[draw:...]]。一次回复最多一条。',
+      '不要自己编造图片地址。'
     ].join('\n'),
 
     // ===== 对外名称与文案 =====
@@ -35,6 +40,9 @@
       menuHide: '隐藏小了',
       menuNewChat: '开启新对话',
       menuSound: '音效',
+      menuHistory: '历史对话',
+      gotoPage: '去网页版继续（带上上下文）',
+      convEmpty: '还没有其他对话',
       showAgain: '显示小了',
       limitTip: '上下文到达上限，请前往小了网页版（xiaole.leleleling.site）继续对话或者开启新对话',
       imageLimitTip: '今日生图次数已用完（每天 10 次）',
@@ -60,7 +68,7 @@
     chat: {
       endpoint: '/chat',
       stream: true,
-      typeSpeed: 3,           // 打字机速度：每秒 3 个字（可调）
+      typeSpeed: 45,          // 打字机速度：每秒 45 字（流式回复按块即时渲染，不再逐字等）
       maxContextChars: 100000, // 上下文上限：100K 字符
       maxRounds: 30,           // 兜底：最多保留 30 轮
       timeout: 60000
@@ -70,6 +78,9 @@
     image: {
       endpoint: '/image',
       maxPerDay: 10,
+      // 图片代理：远程图片未开 CORS 时用它读字节，才能把水印真正烧进图里（拼成 canvas 后导出）
+      proxy: 'https://ai.leleleling.site/proxy/image?url=',
+      cacheDays: 7,          // 生成结果本地缓存 7 天，历史记录里的图不会变红叉
       watermark: {
         text: 'produced by LeleleAI',
         opacity: 0.5,
@@ -78,16 +89,28 @@
       }
     },
 
+    // ===== 会话参数 =====
+    conv: {
+      maxCount: 50,          // 最多保留 50 个对话
+      maxMessages: 400,      // 单个对话最多存 400 条消息
+      titleLength: 18,       // 自动生成标题的字数
+      listLimit: 50
+    },
+
     // ===== 角色参数 =====
     character: {
       size: 160,
       right: 24,
       bottom: 24,
       defaultGender: 'girl',
+      // 静态整体图（当前默认使用）：一张完整的全身立绘
       staticImage: {
-        girl: 'assets/static/girl-static.png',
-        boy: 'assets/static/boy-static.png'
+        girl: 'assets/static/girl.png',
+        boy: 'assets/static/boy.png'
       },
+      // 是否启用 8 层分层合成。当前素材各层取景比例不一致，合成后会错位，
+      // 因此默认关闭；等拿到同构图、同画布的图层素材后改成 true 即可自动升级。
+      useLayers: false,
       layers: {
         girl: ['01_back_hair', '02_body', '03_face_base', '04_iris', '05_blush', '06_front_hair', '07_accessory', '08_happy'],
         boy: ['01_back_hair', '02_body', '03_face_base', '04_iris', '05_blush', '06_front_hair', '07_accessory', '08_happy']

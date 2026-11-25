@@ -1,12 +1,12 @@
 /*!
  * 小了 SDK - 生图模块
- * 调用 /image 接口 + 每日限额 + 水印（双层策略）
+ * 调用 /image + 每日限额 + 真实水印（烧进图片像素）+ 本地 7 天缓存
  *
- * 水印策略说明：
- * 1) 先尝试 fetch 把远程图片读成 blob（同源 blob 不污染 canvas），画进 canvas 叠加水印，
- *    导出 dataURL —— 这时「显示的图」和「保存的图」都带水印。
- * 2) 远程图未开 CORS 时 fetch 会失败（浏览器安全策略），此时退回展示原图 + 在图片上层
- *    叠一个 DOM 水印徽标，保证肉眼始终能看到水印，保存仍是原图。
+ * 为什么要走代理：
+ *   agnes 的图片域名没有 Access-Control-Allow-Origin，浏览器 fetch 读不到字节，
+ *   canvas 会被"污染"，既不能打水印也不能导出。所以先试直连，失败改走
+ *   config.image.proxy（带 ACAO:*），拿到 blob 后画进 canvas、烧水印、导出真正
+ *   带水印的 PNG，再写进 IndexedDB（默认保留 7 天）。
  */
 (function () {
   'use strict';
@@ -16,6 +16,7 @@
   var U = NS.utils;
 
   var Img = (NS.image = {});
+  var objectUrls = [];
 
   /* ================= 限额 ================= */
 
@@ -47,7 +48,7 @@
 
   /**
    * @param {Object} opts { prompt, size, model }
-   * @returns {Promise<{url:string, display:string, save:string, mode:string}>}
+   * @returns {Promise<{id,url,display,save,mode}>}
    */
   Img.generate = function (opts) {
     opts = opts || {};
@@ -78,14 +79,7 @@
         if (!url) throw new Error('no image url');
         consume();
         U.emit('image', { url: url, remaining: Img.remaining() });
-        return Img.prepare(url).then(function (r) {
-          return {
-            url: url,
-            display: r.display,
-            save: r.save,
-            mode: r.mode
-          };
-        });
+        return Img.prepare(url);
       });
   };
 
@@ -124,62 +118,80 @@
     return count ? total / count : 255;
   }
 
-  function toImage(src, crossOrigin) {
+  function toImage(src) {
     return new Promise(function (resolve, reject) {
       var image = new Image();
-      if (crossOrigin) image.crossOrigin = 'anonymous';
       image.onload = function () { resolve(image); };
       image.onerror = function () { reject(new Error('image load failed')); };
       image.src = src;
     });
   }
 
-  // 把图片画进 canvas 并叠加文字水印，返回 dataURL
-  function markImage(image) {
-    var cfg = C.image.watermark;
-    var canvas = document.createElement('canvas');
-    canvas.width = image.naturalWidth || image.width;
-    canvas.height = image.naturalHeight || image.height;
+  // canvas 上烧水印并导出 blob（真·带水印文件）
+  function markToBlob(image) {
+    return new Promise(function (resolve, reject) {
+      var cfg = C.image.watermark;
+      var canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth || image.width;
+      canvas.height = image.naturalHeight || image.height;
 
-    var ctx = canvas.getContext('2d');
-    ctx.drawImage(image, 0, 0);
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0);
 
-    var luma = sampleLuma(ctx, canvas.width, canvas.height);
-    var color = luma < 128 ? '255,255,255' : '70,75,90';
+      var luma = sampleLuma(ctx, canvas.width, canvas.height);
+      var color = luma < 128 ? '255,255,255' : '70,75,90';
 
-    var fontSize = Math.max(10, Math.round(cfg.fontSize * (canvas.width / 1024)));
-    ctx.font = fontSize + 'px -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
+      var fontSize = Math.max(10, Math.round(cfg.fontSize * (canvas.width / 1024)));
+      ctx.font = fontSize + 'px -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
 
-    var pad = Math.round(cfg.padding * (canvas.width / 1024));
-    var x = canvas.width - pad;
-    var y = canvas.height - pad;
+      var pad = Math.round(cfg.padding * (canvas.width / 1024));
+      var x = canvas.width - pad;
+      var y = canvas.height - pad;
 
-    ctx.fillStyle = 'rgba(' + color + ',' + cfg.opacity + ')';
-    ctx.fillText(cfg.text, x, y);
+      ctx.fillStyle = 'rgba(' + color + ',' + cfg.opacity + ')';
+      ctx.fillText(cfg.text, x, y);
 
-    return canvas.toDataURL('image/png');
+      if (canvas.toBlob) {
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob);
+          else reject(new Error('toBlob failed'));
+        }, 'image/png', 0.92);
+      } else {
+        reject(new Error('toBlob unsupported'));
+      }
+    });
+  }
+
+  function fetchBlob(url) {
+    return fetch(url, { mode: 'cors', credentials: 'omit' }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.blob();
+    });
+  }
+
+  function remember(objUrl) {
+    objectUrls.push(objUrl);
+    if (objectUrls.length > 60) {
+      try { URL.revokeObjectURL(objectUrls.shift()); } catch (e) {}
+    }
+    return objUrl;
   }
 
   /**
-   * 准备一张可展示的图：优先本地化 + canvas 水印，失败则退回原图（由 UI 叠 DOM 水印）
-   * @returns {Promise<{display:string, save:string, mode:'watermarked'|'overlay'}>}
+   * 准备一张可展示 / 可下载的图
+   * 直连读字节 → 失败走代理 → 再失败退回原图（由 UI 叠 DOM 水印）
+   * @returns {Promise<{id,url,display,save,mode}>}
    */
   Img.prepare = function (url) {
-    var timeoutMs = 8000;
-
-    function fallback() {
-      return { display: url, save: url, mode: 'overlay' };
-    }
-
-    var blobUrl = null;
+    var id = U.hash(url);
     var settled = false;
 
     return new Promise(function (resolve) {
       var timer = setTimeout(function () {
-        if (!settled) { settled = true; resolve(fallback()); }
-      }, timeoutMs);
+        if (!settled) { settled = true; resolve({ id: id, url: url, display: url, save: url, mode: 'overlay' }); }
+      }, 25000);
 
       function done(v) {
         if (settled) return;
@@ -188,30 +200,46 @@
         resolve(v);
       }
 
-      // 第一层：fetch 拿字节（需要图片源允许跨域）
-      fetch(url, { mode: 'cors', credentials: 'omit' })
-        .then(function (res) {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.blob();
+      function fallback() {
+        done({ id: id, url: url, display: url, save: url, mode: 'overlay' });
+      }
+
+      fetchBlob(url)
+        .catch(function () {
+          var proxy = C.image.proxy || '';
+          if (!proxy) throw new Error('no proxy');
+          return fetchBlob(proxy + encodeURIComponent(url));
         })
         .then(function (blob) {
-          blobUrl = URL.createObjectURL(blob);
-          return toImage(blobUrl);
+          var localUrl = remember(URL.createObjectURL(blob));
+          return toImage(localUrl).then(markToBlob);
         })
-        .then(function (image) {
-          var dataUrl = markImage(image);
-          done({ display: dataUrl, save: dataUrl, mode: 'watermarked' });
+        .then(function (wmBlob) {
+          U.imgStore.put(id, wmBlob);
+          var objUrl = remember(URL.createObjectURL(wmBlob));
+          done({ id: id, url: url, display: objUrl, save: objUrl, mode: 'watermarked' });
         })
-        .catch(function () {
-          // 第二层：不带 crossOrigin 的 img 先能显示（canvas 会被污染，无法导出）
-          toImage(url, false)
-            .then(function () { done(fallback()); })
-            .catch(function () { done(fallback()); });
-        });
+        .catch(fallback);
     });
   };
 
-  // 兼容旧调用：只取可展示的图
+  /** 从本地缓存恢复图片（历史记录用），缓存过期则回落远程地址 */
+  Img.restore = function (id, url) {
+    return U.imgStore.get(id)
+      .then(function (blob) {
+        if (blob) {
+          var a = remember(URL.createObjectURL(blob));
+          var b = remember(URL.createObjectURL(blob));
+          return { id: id, url: url, display: a, save: b, mode: 'watermarked', cached: true };
+        }
+        return { id: id, url: url, display: url, save: url, mode: 'overlay', cached: false };
+      })
+      .catch(function () {
+        return { id: id, url: url, display: url, save: url, mode: 'overlay', cached: false };
+      });
+  };
+
+  // 兼容旧调用
   Img.watermark = function (url) {
     return Img.prepare(url).then(function (r) { return r.display; });
   };

@@ -1,6 +1,6 @@
 /*!
- * 小了 - 独立主页整页对话（xiaole.leleleling.site）
- * 复用 SDK 的 chat / utils / image 核心，无悬浮角色
+ * 小了 - 独立主页（xiaole.leleleling.site）
+ * 多对话 + 本地历史 + 流式对话 + 内置生图（真水印 / 7 天缓存）
  */
 (function () {
   'use strict';
@@ -12,35 +12,50 @@
 
   var Page = (NS.page = {});
 
-  var listEl = null;
-  var inputEl = null;
-  var sendBtn = null;
-  var imgPanel = null;
-  var imgInput = null;
-  var imgBtn = null;
-  var imgCount = null;
-  var typingTimer = null;
+  var app, listEl, inputEl, sendBtn, imgPanel, imgInput, imgBtn, imgCount;
+  var convListEl, overlayEl, titleEl;
+  var revealedTimer = null;
+  var drawingTips = [
+    '小了正在打草稿…',
+    '正在挑选颜色…',
+    '在画布上铺底色…',
+    '慢慢补细节…',
+    '快好了，再等一下下…'
+  ];
 
-  /* ================= 构建界面 ================= */
+  /* ================= 界面 ================= */
 
   function build() {
-    var app = document.getElementById('xl-page');
+    app = document.getElementById('xl-page');
     if (!app) {
       app = U.el('div', 'xlp');
       app.id = 'xl-page';
       document.body.appendChild(app);
     }
+
     app.innerHTML =
+      '<div class="xlp-overlay" id="xlp-overlay"></div>' +
+      '<aside class="xlp-side" id="xlp-side">' +
+      '<div class="xlp-side-head">' +
+      '<span class="xlp-side-brand">小了</span>' +
+      '<button class="xlp-side-new" id="xlp-new">+ 新建</button>' +
+      '</div>' +
+      '<div class="xlp-conv-list" id="xlp-conv-list"></div>' +
+      '<div class="xlp-side-foot">🔒 对话只存在本地浏览器<br>最多保留 50 个对话</div>' +
+      '</aside>' +
+
+      '<div class="xlp-main">' +
       '<header class="xlp-header">' +
+      '<button class="xlp-menu" id="xlp-menu" title="对话列表">☰</button>' +
       '<div class="xlp-brand">' +
       '<div class="xlp-avatar">小</div>' +
       '<div class="xlp-title-wrap">' +
-      '<h1 class="xlp-title">小了</h1>' +
+      '<h1 class="xlp-title" id="xlp-conv-title">小了</h1>' +
       '<p class="xlp-sub">了了了岭工作室 · AI 助手</p>' +
       '</div>' +
       '</div>' +
       '<div class="xlp-actions">' +
-      '<button class="xlp-btn" id="xlp-new">开启新对话</button>' +
+      '<button class="xlp-btn" id="xlp-new-top">开启新对话</button>' +
       '</div>' +
       '</header>' +
       '<main class="xlp-body"><div class="xlp-messages" id="xlp-messages"></div></main>' +
@@ -55,24 +70,24 @@
       '</div>' +
       '<div class="xlp-input-row">' +
       '<button class="xlp-icon" id="xlp-img-toggle" title="生成图片">画</button>' +
-      '<textarea class="xlp-input" id="xlp-input" rows="1" placeholder="' +
-      C.text.placeholder +
-      '"></textarea>' +
+      '<textarea class="xlp-input" id="xlp-input" rows="1" placeholder="' + C.text.placeholder + '"></textarea>' +
       '<button class="xlp-send" id="xlp-send">' + C.text.send + '</button>' +
       '</div>' +
       '<div class="xlp-tip" id="xlp-tip"></div>' +
-      '</footer>';
+      '</footer>' +
+      '</div>';
 
-    listEl = app.querySelector('#xlp-messages');
-    inputEl = app.querySelector('#xlp-input');
-    sendBtn = app.querySelector('#xlp-send');
-    imgPanel = app.querySelector('#xlp-img-panel');
-    imgInput = app.querySelector('#xlp-img-input');
-    imgBtn = app.querySelector('#xlp-img-gen');
-    imgCount = app.querySelector('#xlp-img-count');
+    listEl = document.getElementById('xlp-messages');
+    inputEl = document.getElementById('xlp-input');
+    sendBtn = document.getElementById('xlp-send');
+    imgPanel = document.getElementById('xlp-img-panel');
+    imgInput = document.getElementById('xlp-img-input');
+    imgBtn = document.getElementById('xlp-img-gen');
+    imgCount = document.getElementById('xlp-img-count');
+    convListEl = document.getElementById('xlp-conv-list');
+    overlayEl = document.getElementById('xlp-overlay');
+    titleEl = document.getElementById('xlp-conv-title');
   }
-
-  /* ================= 事件 ================= */
 
   function bind() {
     sendBtn.addEventListener('click', submit);
@@ -89,24 +104,22 @@
       inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
     });
 
-    document.getElementById('xlp-new').addEventListener('click', function () {
-      Chat.newSession();
-      clearMessages();
-      welcome();
-      setLocked(false);
+    document.getElementById('xlp-new').addEventListener('click', startNewConv);
+    document.getElementById('xlp-new-top').addEventListener('click', startNewConv);
+    document.getElementById('xlp-menu').addEventListener('click', function () {
+      app.classList.toggle('side-open');
+    });
+    overlayEl.addEventListener('click', function () {
+      app.classList.remove('side-open');
     });
 
     document.getElementById('xlp-img-toggle').addEventListener('click', function () {
-      var show = !imgPanel.classList.contains('on');
-      setImgPanel(show);
+      setImgPanel(!imgPanel.classList.contains('on'));
     });
-
     document.getElementById('xlp-img-cancel').addEventListener('click', function () {
       setImgPanel(false);
     });
-
     imgBtn.addEventListener('click', submitImage);
-
     imgInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -115,101 +128,257 @@
     });
   }
 
+  /* ================= 会话列表 ================= */
+
+  function refreshConvList() {
+    if (!convListEl) return;
+    var convs = U.convs.all();
+    var cur = U.convs.currentId();
+
+    if (!convs.length) {
+      convListEl.innerHTML = '<div class="xlp-conv-empty">还没有对话，点「+ 新建」开始</div>';
+      return;
+    }
+
+    convListEl.innerHTML = convs
+      .map(function (c) {
+        var active = c.id === cur ? ' active' : '';
+        var count = (c.messages || []).length;
+        return (
+          '<div class="xlp-conv' + active + '" data-id="' + c.id + '">' +
+          '<div class="xlp-conv-main">' +
+          '<span class="xlp-conv-title">' + U.escape(c.title || '新对话') + '</span>' +
+          '<span class="xlp-conv-meta">' + U.timeText(c.updatedAt) + ' · ' + count + ' 条</span>' +
+          '</div>' +
+          '<button class="xlp-conv-del" data-del="' + c.id + '" title="删除">✕</button>' +
+          '</div>'
+        );
+      })
+      .join('');
+
+    Array.prototype.forEach.call(convListEl.querySelectorAll('.xlp-conv'), function (row) {
+      row.addEventListener('click', function (e) {
+        if (e.target && e.target.getAttribute && e.target.getAttribute('data-del')) return;
+        openConv(row.getAttribute('data-id'));
+      });
+    });
+
+    Array.prototype.forEach.call(convListEl.querySelectorAll('.xlp-conv-del'), function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = btn.getAttribute('data-del');
+        if (!id) return;
+        var conv = U.convs.get(id);
+        var hasMsg = conv && conv.messages && conv.messages.length;
+        if (hasMsg && !window.confirm('删除「' + (conv.title || '新对话') + '」？本地记录不可恢复。')) return;
+        var next = U.convs.remove(id);
+        if (next) openConv(next);
+        else startNewConv();
+      });
+    });
+  }
+
+  function syncTitle(conv) {
+    if (titleEl) titleEl.textContent = conv && conv.title && conv.title !== '新对话' ? conv.title : '小了';
+  }
+
+  /* ================= 打开 / 新建会话 ================= */
+
+  function openConv(id) {
+    var conv = U.convs.switchTo(id);
+    if (!conv) return;
+    app.classList.remove('side-open');
+    syncTitle(conv);
+    renderConv(conv);
+    refreshConvList();
+  }
+
+  function startNewConv() {
+    var conv = U.convs.create('新对话');
+    app.classList.remove('side-open');
+    syncTitle(conv);
+    clearMessages();
+    welcome();
+    Chat.newSession();
+    refreshConvList();
+  }
+
   /* ================= 消息渲染 ================= */
+
+  // 流式/静态渲染时先把 [[draw:...]] 藏起来，收尾再真正去生图
+  function displayText(str) {
+    return String(str || '')
+      .replace(/\[\[draw:([^\]]*)\]\]/gi, '')
+      .replace(/\[\[draw:?[^\]]*$/i, '');
+  }
 
   function scrollBottom() {
     if (listEl) listEl.scrollTop = listEl.scrollHeight;
   }
 
   function clearMessages() {
-    if (typingTimer) {
-      clearInterval(typingTimer);
-      typingTimer = null;
+    if (revealedTimer) {
+      clearInterval(revealedTimer);
+      revealedTimer = null;
     }
     listEl.innerHTML = '';
   }
 
+  function renderConv(conv) {
+    clearMessages();
+
+    // 让聊天核心的上下文跟着当前会话走
+    Chat.newSession();
+    var msgs = (conv && conv.messages) || [];
+    var hasContent = false;
+
+    msgs.forEach(function (m) {
+      if (m.type === 'image') {
+        hasContent = true;
+        renderImageCard({ id: m.imgId, url: m.url, display: m.url, save: m.url, mode: 'overlay' }, m.imgId);
+      } else if (m.content) {
+        hasContent = true;
+        addMessage(m.role, m.content, { instant: true });
+        Chat.session.messages.push({ role: m.role, content: m.content });
+      }
+    });
+
+    if (!hasContent) welcome();
+    scrollBottom();
+  }
+
+  function welcome() {
+    var t = C.welcome[Math.floor(Math.random() * C.welcome.length)];
+    addMessage('assistant', t, { instant: true, local: true });
+  }
+
+  /**
+   * 生成一条消息节点。流式内容按 ~60 字/秒铺出来，收完立刻全量落地，
+   * 不再逐字干等（旧版 3 字/秒正是"输出超级慢"的主因）。
+   */
   function addMessage(role, text, opts) {
     opts = opts || {};
     var wrap = U.el('div', 'xlp-msg xlp-msg-' + role);
-    var avatar = U.el('div', 'xlp-msg-avatar', role === 'user' ? '你' : '小');
-    var body = U.el('div', 'xlp-msg-body');
-    var content = U.el('div', 'xlp-msg-text');
-
-    if (opts.instant) content.innerHTML = U.toHtml(text);
-    body.appendChild(content);
-    wrap.appendChild(avatar);
-    wrap.appendChild(body);
+    wrap.innerHTML =
+      '<div class="xlp-msg-avatar">' + (role === 'user' ? '你' : '小') + '</div>' +
+      '<div class="xlp-msg-body"><div class="xlp-msg-text"></div></div>';
+    var content = wrap.querySelector('.xlp-msg-text');
     listEl.appendChild(wrap);
     scrollBottom();
 
-    if (opts.instant) return { finish: function () {} };
+    if (opts.instant) {
+      content.innerHTML = U.toHtml(displayText(text));
+      return { node: wrap, push: function () {}, finish: function () {} };
+    }
 
-    var queue = '';
-    var printed = '';
+    var shown = '';
+    var pending = '';
     var done = false;
-    var speed = Math.max(1, C.chat.typeSpeed || 3);
-
     content.innerHTML = '<span class="xlp-cursor"></span>';
-    var timer = setInterval(function () {
-      if (queue.length) {
-        printed += queue.charAt(0);
-        queue = queue.slice(1);
-        content.innerHTML = U.toHtml(printed) + '<span class="xlp-cursor"></span>';
+
+    if (revealedTimer) {
+      clearInterval(revealedTimer);
+      revealedTimer = null;
+    }
+
+    var speed = Math.max(10, C.chat.typeSpeed || 45);
+    var perTick = Math.max(1, Math.round(speed / 60));
+
+    revealedTimer = setInterval(function () {
+      if (pending.length) {
+        shown += pending.slice(0, perTick);
+        pending = pending.slice(perTick);
+        content.innerHTML = U.toHtml(displayText(shown)) + '<span class="xlp-cursor"></span>';
         scrollBottom();
       } else if (done) {
-        clearInterval(timer);
-        content.innerHTML = U.toHtml(printed);
+        clearInterval(revealedTimer);
+        revealedTimer = null;
+        content.innerHTML = U.toHtml(displayText(shown || ''));
         scrollBottom();
       }
-    }, Math.round(1000 / speed));
-    typingTimer = timer;
+    }, 16);
 
     return {
+      node: wrap,
       push: function (piece) {
-        queue += piece;
+        if (piece) pending += piece;
       },
-      finish: function () {
+      finish: function (finalText) {
         done = true;
+        if (finalText && !shown && !pending) shown = finalText;
+        // 收尾最多等 400ms，避免"字还在慢慢爬"
+        setTimeout(function () {
+          if (!shown && finalText) shown = finalText;
+          if (pending) { shown += pending; pending = ''; }
+          content.innerHTML = U.toHtml(displayText(shown));
+          if (revealedTimer) { clearInterval(revealedTimer); revealedTimer = null; }
+          scrollBottom();
+        }, 400);
       }
     };
   }
 
-  function addLoading() {
+  function addLoading(kind) {
     var wrap = U.el('div', 'xlp-msg xlp-msg-assistant xlp-loading');
-    wrap.innerHTML =
-      '<div class="xlp-msg-avatar">小</div>' +
-      '<div class="xlp-msg-body"><span class="xlp-spinner"></span></div>';
+    if (kind === 'draw') {
+      wrap.innerHTML =
+        '<div class="xlp-msg-avatar">小</div>' +
+        '<div class="xlp-msg-body">' +
+        '<div class="xlp-drawing">' +
+        '<div class="xlp-sketch"><span></span><span></span><span></span><span></span><span></span></div>' +
+        '<div class="xlp-drawing-text">' + drawingTips[0] + '</div>' +
+        '</div>' +
+        '</div>';
+      var i = 1;
+      var t = setInterval(function () {
+        var el = wrap.querySelector('.xlp-drawing-text');
+        if (!el) { clearInterval(t); return; }
+        el.textContent = drawingTips[i % drawingTips.length];
+        i++;
+      }, 1800);
+      wrap._tipTimer = t;
+    } else {
+      wrap.innerHTML =
+        '<div class="xlp-msg-avatar">小</div>' +
+        '<div class="xlp-msg-body"><span class="xlp-spinner"></span></div>';
+    }
     listEl.appendChild(wrap);
     scrollBottom();
     return wrap;
   }
 
   function removeNode(node) {
+    if (node && node._tipTimer) clearInterval(node._tipTimer);
     if (node && node.parentNode) node.parentNode.removeChild(node);
   }
 
-  function welcome() {
-    var t = C.welcome[Math.floor(Math.random() * C.welcome.length)];
-    addMessage('assistant', t, { instant: true });
-  }
-
-  function addImage(res) {
-    var display = res.display || res.url || '';
-    var save = res.save || res.url || display;
-    var overlay = res.mode === 'overlay';
+  function renderImageCard(res, imgId) {
     var wrap = U.el('div', 'xlp-msg xlp-msg-assistant');
     wrap.innerHTML =
       '<div class="xlp-msg-avatar">小</div>' +
       '<div class="xlp-msg-body xlp-msg-image">' +
-      '<span class="xlp-img-wrap">' +
-      '<img src="' + display + '" alt="生成图片" />' +
-      (overlay ? '<span class="xlp-img-wm">' + NS.config.image.watermark.text + '</span>' : '') +
-      '</span>' +
-      '<a class="xlp-download" href="' + save + '" download="xiaole.png">保存图片</a>' +
+      '<span class="xlp-img-wrap"></span>' +
+      '<a class="xlp-download" download="xiaole.png">保存图片</a>' +
       '</div>';
+
+    var box = wrap.querySelector('.xlp-img-wrap');
+    var linkEl = wrap.querySelector('.xlp-download');
+
+    function paint(r) {
+      var overlay = r.mode === 'overlay';
+      box.innerHTML =
+        '<img src="' + (r.display || r.url) + '" alt="生成图片" />' +
+        (overlay ? '<span class="xlp-img-wm">' + C.image.watermark.text + '</span>' : '');
+      linkEl.href = r.save || r.url;
+      linkEl.setAttribute('download', 'xiaole-' + (r.id || 'img') + '.png');
+    }
+
+    if (imgId) NS.image.restore(imgId, res.url).then(paint);
+    else paint(res);
+
     listEl.appendChild(wrap);
     scrollBottom();
+    return wrap;
   }
 
   /* ================= 提示 ================= */
@@ -220,9 +389,7 @@
     el.textContent = text;
     el.classList.add('on');
     if (!sticky) {
-      setTimeout(function () {
-        el.classList.remove('on');
-      }, 3200);
+      setTimeout(function () { el.classList.remove('on'); }, 3200);
     }
   }
 
@@ -238,7 +405,7 @@
     else hideTip();
   }
 
-  /* ================= 发送 ================= */
+  /* ================= 发送对话 ================= */
 
   function submit() {
     if (Chat.session.busy) return;
@@ -248,15 +415,16 @@
     inputEl.value = '';
     inputEl.style.height = 'auto';
     addMessage('user', text, { instant: true });
+    U.convs.append({ role: 'user', content: text, type: 'text' });
+    refreshConvList();
 
-    var loading = addLoading();
+    var loading = addLoading('chat');
     var assistant = null;
 
     Chat.send(text, {
       onDelta: function (piece, isDone) {
-        removeNode(loading);
-        loading = null;
-        if (!assistant) assistant = addMessage('assistant', '', {});
+        if (loading) { removeNode(loading); loading = null; }
+        if (!assistant) assistant = addMessage('assistant', '');
         if (piece) assistant.push(piece);
         if (isDone) assistant.finish();
       },
@@ -266,11 +434,20 @@
         setLocked(true);
         tip(msg, true);
       },
-      onDone: function () {
+      onDone: function (full) {
         removeNode(loading);
         loading = null;
-        if (assistant) assistant.finish();
+        if (assistant) assistant.finish(full);
+
+        var draw = U.extractDraw(full || '');
+        if (full) U.convs.append({ role: 'assistant', content: draw.text || full, type: 'text' });
         hideTip();
+        refreshConvList();
+
+        // 模型自己发起的生图：扣额度、直接出图
+        if (draw.prompts.length) {
+          generateOnDemand(draw.prompts[0], true);
+        }
       },
       onError: function () {
         removeNode(loading);
@@ -286,9 +463,7 @@
     imgPanel.classList.toggle('on', !!show);
     if (show) {
       syncImgCount();
-      setTimeout(function () {
-        imgInput.focus();
-      }, 160);
+      setTimeout(function () { imgInput.focus(); }, 160);
     }
   }
 
@@ -297,6 +472,49 @@
     var n = NS.image.remaining();
     imgCount.textContent = n > 0 ? '今日剩余 ' + n + ' 次' : '今日次数已用完';
     imgBtn.disabled = n <= 0;
+  }
+
+  function generateOnDemand(prompt, fromModel) {
+    if (!NS.image) return;
+    if (!NS.image.canGenerate()) {
+      UI_tipNoQuota();
+      return;
+    }
+    if (!fromModel) addMessage('user', '画一张图：' + prompt, { instant: true });
+    if (!fromModel) U.convs.append({ role: 'user', content: '画一张图：' + prompt, type: 'text' });
+    refreshConvList();
+
+    var loading = addLoading('draw');
+
+    NS.image
+      .generate({ prompt: prompt })
+      .then(function (res) {
+        removeNode(loading);
+        renderImageCard(res);
+        U.convs.append({
+          role: 'assistant',
+          type: 'image',
+          imgId: res.id,
+          url: res.url,
+          prompt: prompt,
+          content: '（生成了图片：' + prompt + '）'
+        });
+        imgBtn.disabled = false;
+        imgBtn.textContent = '生成图片';
+        syncImgCount();
+        refreshConvList();
+      })
+      .catch(function (err) {
+        removeNode(loading);
+        addMessage('assistant', (err && err.message) || C.text.errorMsg, { instant: true });
+        imgBtn.disabled = false;
+        imgBtn.textContent = '生成图片';
+        syncImgCount();
+      });
+  }
+
+  function UI_tipNoQuota() {
+    tip(C.text.imageLimitTip, true);
   }
 
   function submitImage() {
@@ -312,59 +530,130 @@
       return;
     }
 
+    imgInput.value = '';
     imgBtn.disabled = true;
     imgBtn.textContent = '生成中…';
-    addMessage('user', '画一张图：' + prompt, { instant: true });
-    var loading = addLoading();
-
-    NS.image
-      .generate({ prompt: prompt })
-      .then(function (res) {
-        removeNode(loading);
-        addImage(res);
-        setImgPanel(false);
-        imgBtn.disabled = false;
-        imgBtn.textContent = '生成图片';
-        imgInput.value = '';
-        syncImgCount();
-        hideTip();
-      })
-      .catch(function (err) {
-        removeNode(loading);
-        addMessage('assistant', (err && err.message) || C.text.errorMsg, { instant: true });
-        imgBtn.disabled = false;
-        imgBtn.textContent = '生成图片';
-        syncImgCount();
-      });
+    setImgPanel(false);
+    generateOnDemand(prompt, false);
   }
 
-  /* ================= 启动 ================= */
+  /* ================= 图片大图弹窗 ================= */
+
+  var lightbox = null;
+
+  function buildLightbox() {
+    lightbox = U.el('div', 'xlp-lightbox');
+    lightbox.id = 'xlp-lightbox';
+    lightbox.innerHTML =
+      '<div class="xlp-lightbox-mask"></div>' +
+      '<div class="xlp-lightbox-body">' +
+      '<img alt="查看图片" />' +
+      '<div class="xlp-lightbox-bar">' +
+      '<a class="xlp-lightbox-dl" download="xiaole.png">保存图片</a>' +
+      '<button class="xlp-lightbox-close">关闭</button>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(lightbox);
+
+    lightbox.querySelector('.xlp-lightbox-mask').addEventListener('click', hideLightbox);
+    lightbox.querySelector('.xlp-lightbox-close').addEventListener('click', hideLightbox);
+  }
+
+  function showLightbox(src, downloadHref) {
+    if (!lightbox) buildLightbox();
+    lightbox.querySelector('img').src = src;
+    var dl = lightbox.querySelector('.xlp-lightbox-dl');
+    dl.href = downloadHref || src;
+    lightbox.classList.add('on');
+  }
+
+  function hideLightbox() {
+    if (lightbox) lightbox.classList.remove('on');
+  }
+
+  // 点击消息里的图片 → 放大查看
+  function bindListEvents() {
+    listEl.addEventListener('click', function (e) {
+      var img = e.target.closest ? e.target.closest('.xlp-msg-image img') : null;
+      if (img) {
+        var wrap = img.closest('.xlp-msg-image');
+        var dl = wrap && wrap.querySelector('.xlp-download');
+        showLightbox(img.src, dl ? dl.href : img.src);
+        return;
+      }
+
+      // 代码块复制
+      var copyBtn = e.target.closest ? e.target.closest('.xl-copy') : null;
+      if (copyBtn) {
+        var block = copyBtn.closest('.xl-code-block');
+        var codeEl = block && block.querySelector('.xl-code');
+        if (codeEl) {
+          var txt = codeEl.textContent || '';
+          try {
+            navigator.clipboard.writeText(txt);
+            copyBtn.textContent = '已复制';
+            setTimeout(function () { copyBtn.textContent = '复制'; }, 1200);
+          } catch (err) {
+            copyBtn.textContent = '复制失败';
+          }
+        }
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') hideLightbox();
+    });
+  }
+
+  /* ================= 初始化 ================= */
+
+  function importFromHash() {
+    var m = (location.hash || '').match(/#h=([A-Za-z0-9+/=_-]+)/);
+    if (!m) return;
+
+    var messages = null;
+    try {
+      var raw = m[1].replace(/-/g, '+').replace(/_/g, '/');
+      var json = decodeURIComponent(escape(atob(raw)));
+      messages = JSON.parse(json);
+    } catch (e) {
+      messages = null;
+    }
+    if (!messages || !messages.length) return;
+
+    var conv = U.convs.create('从悬浮框继续', true);
+    messages.forEach(function (msg) {
+      if (!msg || !msg.content) return;
+      U.convs.append({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: String(msg.content),
+        type: 'text'
+      });
+    });
+    conv.title = '从悬浮框继续';
+
+    // 清掉 hash，避免刷新重复导入
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
 
   Page.init = function () {
-   try {
     build();
     bind();
+    bindListEvents();
 
-    if (!Chat.loadHistory()) {
-      Chat.newSession();
-      welcome();
-    } else {
-      if (!Chat.session.systemPrompt) Chat.session.systemPrompt = C.basePrompt;
-      var shown = 0;
-      (Chat.session.messages || []).forEach(function (m) {
-        if (m.role === 'system' || m.local) return;
-        addMessage(m.role, m.content, { instant: true });
-        shown++;
-      });
-      if (!shown) welcome();
-      if (Chat.measure() >= C.chat.maxContextChars) setLocked(true);
-    }
+    // 旧版单会话记录迁移进多对话，避免升级后历史"消失"
+    U.convs.migrate('chat-history-' + (C.state.preset || 'default'), '历史对话');
+    U.imgStore.gc();
 
+    // 从悬浮框带过来的上下文：xiaole.leleleling.site/index.html#h=<base64>
+    importFromHash();
+
+    var conv = U.convs.current();
+    if (!conv) conv = U.convs.create('新对话', true);
+    syncTitle(conv);
+    renderConv(conv);
+    refreshConvList();
     syncImgCount();
-    return Promise.resolve();
-   } catch (e) {
-     if (window.console) console.error('[xiaole-page] init error', e && e.message, e && e.stack);
-     return Promise.resolve();
-   }
+    scrollBottom();
   };
 })();
