@@ -112,6 +112,7 @@
       })
     ).then(function (results) {
       var ok = results.filter(Boolean).length >= 5; // 核心层基本齐全
+      try { console.log('[xiaole] detect', gender, JSON.stringify(results), 'ok=' + ok); } catch (e) {}
       return ok;
     });
   };
