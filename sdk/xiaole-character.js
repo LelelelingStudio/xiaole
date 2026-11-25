@@ -77,14 +77,48 @@
     return assetUrl('assets/layers/' + gender + '/' + name + '.png');
   }
 
-  function mountLayered() {
+  /**
+   * 直接挂载分层素材，按实际加载成功数决定是否降级：
+   * - 成功 >= 5 层：进入 layered
+   * - 全部失败 / 8 秒内不足 5 层：回落静态整体图，再失败则占位
+   * 这样不必先探测再下载一遍，避免冷启动超时误判。
+   */
+  function mountLayered(onFallback) {
     root.innerHTML = '';
     layerEls = [];
-    C.character.layers[gender].forEach(function (name) {
+
+    var list = C.character.layers[gender] || [];
+    var loaded = 0;
+    var settled = 0;
+    var decided = false;
+    var timer = null;
+
+    function decide(ok) {
+      if (decided) return;
+      decided = true;
+      if (timer) clearTimeout(timer);
+      if (ok) {
+        C.state.mode = 'layered';
+        root.classList.remove('xl-character-empty');
+        U.emit('mode', C.state.mode);
+      } else {
+        if (typeof onFallback === 'function') onFallback();
+      }
+    }
+
+    function check() {
+      if (decided) return;
+      if (loaded >= 5) return decide(true);
+      if (settled >= list.length) return decide(false);
+    }
+
+    list.forEach(function (name) {
       var el = new Image();
       el.className = 'xl-layer xl-layer-' + name;
       el.draggable = false;
+      el.alt = C.name;
       if (name === '04_iris') el.className += ' xl-layer-iris';
+
       el.style.transformOrigin = '50% 100%';
       var tf = (C.character.layerTransform[gender] || {})[name];
       if (tf) {
@@ -95,27 +129,21 @@
           'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
         el.style.transform = el.dataset.baseTransform;
       }
+
+      el.onload = function () { loaded++; settled++; check(); };
+      el.onerror = function () { el.style.display = 'none'; settled++; check(); };
+
       el.src = layerPath(name);
-      el.onerror = function () { el.style.display = 'none'; };
       root.appendChild(el);
       layerEls.push(el);
     });
-    C.state.mode = 'layered';
-  }
 
-  // 探测图层是否齐全，齐全则自动切换到分层模式（宿主无感知）
-  Ch.detectLayers = function () {
-    var list = C.character.layers[gender] || [];
-    return Promise.all(
-      list.map(function (name) {
-        return U.probeImage(layerPath(name));
-      })
-    ).then(function (results) {
-      var ok = results.filter(Boolean).length >= 5; // 核心层基本齐全
-      try { console.log('[xiaole] detect', gender, JSON.stringify(results), 'ok=' + ok); } catch (e) {}
-      return ok;
-    });
-  };
+    // 慢网兜底：8 秒内还没凑够 5 层就降级，不留白
+    timer = setTimeout(function () {
+      if (loaded >= 5) decide(true);
+      else decide(false);
+    }, 8000);
+  }
 
   /* ================= 性别 ================= */
 
@@ -125,30 +153,15 @@
     gender = next;
     U.store.set('gender', gender);
 
-    // 先探测图层是否齐全：齐全直接走分层模式，否则用静态整体图
-    function detectWithRetry(tried) {
-      return Ch.detectLayers().then(function (ok) {
-        if (ok || tried) return ok;
-        // 首次冷加载素材慢时会超时，稍等再探一次
-        return new Promise(function (r) {
-          setTimeout(function () { r(detectWithRetry(1)); }, 2500);
-        });
-      });
-    }
-
-    detectWithRetry(0).then(function (ok) {
-      if (ok) {
-        mountLayered();
-      } else {
-        mountStatic();
-      }
-      if (changed && !silent) {
-        root.classList.add('xl-fade');
-        setTimeout(function () { root.classList.remove('xl-fade'); }, 320);
-      }
-      U.emit('gender', gender);
-      U.emit('mode', C.state.mode);
+    mountLayered(function () {
+      mountStatic();
     });
+
+    if (changed && !silent) {
+      root.classList.add('xl-fade');
+      setTimeout(function () { root.classList.remove('xl-fade'); }, 320);
+    }
+    U.emit('gender', gender);
 
     return gender;
   };
