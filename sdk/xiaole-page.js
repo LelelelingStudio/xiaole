@@ -185,8 +185,18 @@
   /* ================= 打开 / 新建会话 ================= */
 
   function openConv(id) {
-    // 正在回答时切会话：先中断，别把半截回答写进另一个会话
-    if (Chat.session.busy) Chat.abort();
+    // 正在回答时切会话：中断当前流，并把已说出的半截回答留在原会话里
+    if (Chat.session.busy) {
+      var prevId = U.convs.currentId();
+      Chat.abort({
+        onStop: function (partial) {
+          var text = U.extractDraw(partial).text;
+          if (text) {
+            U.convs.append({ role: 'assistant', content: text + '\n\n（已中断）', type: 'text' }, prevId);
+          }
+        }
+      });
+    }
     var conv = U.convs.switchTo(id);
     if (!conv) return;
     setImgPanel(false);
@@ -429,7 +439,9 @@
     inputEl.style.height = 'auto';
     addMessage('user', text, { instant: true });
     if (NS.character && NS.character.react) NS.character.react('happy');
-    U.convs.append({ role: 'user', content: text, type: 'text' });
+    // 绑定发起会话，回答回来时不会串台
+    var sendConvId = U.convs.currentId();
+    U.convs.append({ role: 'user', content: text, type: 'text' }, sendConvId);
     refreshConvList();
 
     var loading = addLoading('chat');
@@ -438,6 +450,7 @@
     Chat.send(text, {
       onDelta: function (piece, isDone) {
         if (loading) { removeNode(loading); loading = null; }
+        if (U.convs.currentId() !== sendConvId) return; // 已经切走了，不再往当前视图写
         if (!assistant) assistant = addMessage('assistant', '');
         if (piece) assistant.push(piece);
         if (isDone) assistant.finish();
@@ -454,19 +467,20 @@
         if (assistant) assistant.finish(full);
 
         var draw = U.extractDraw(full || '');
-        // 只存干净文本，别把 [[draw:...]] 指令写进历史
-        if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' });
+        // 只存干净文本，别把 [[draw:...]] 指令写进历史；写回发起它的会话
+        if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         hideTip();
         refreshConvList();
 
-        // 模型自己发起的生图：扣额度、直接出图
+        // 模型自己发起的生图：扣额度、直接出图（仍记在发起的会话里）
         if (draw.prompts.length) {
-          generateOnDemand(draw.prompts[0], true);
+          generateOnDemand(draw.prompts[0], true, sendConvId);
         }
       },
       onError: function () {
         removeNode(loading);
         loading = null;
+        if (U.convs.currentId() !== sendConvId) return;
         addMessage('assistant', C.text.errorMsg, { instant: true });
       }
     });
@@ -489,7 +503,7 @@
     imgBtn.disabled = n <= 0;
   }
 
-  function generateOnDemand(prompt, fromModel) {
+  function generateOnDemand(prompt, fromModel, convIdIn) {
     if (!NS.image) return;
     if (!NS.image.canGenerate()) {
       UI_tipNoQuota();
@@ -499,13 +513,19 @@
     if (!fromModel) U.convs.append({ role: 'user', content: '画一张图：' + prompt, type: 'text' });
     refreshConvList();
 
+    // 记住是在哪个会话发起的，回来时别把图塞进别人家的对话
+    var convId = convIdIn || U.convs.currentId();
     var loading = addLoading('draw');
+
+    function stillHere() {
+      return U.convs.currentId() === convId;
+    }
 
     NS.image
       .generate({ prompt: prompt })
       .then(function (res) {
         removeNode(loading);
-        renderImageCard(res);
+        if (stillHere()) renderImageCard(res);
         U.convs.append({
           role: 'assistant',
           type: 'image',
@@ -513,7 +533,7 @@
           url: res.url,
           prompt: prompt,
           content: '（生成了图片：' + prompt + '）'
-        });
+        }, convId);
         imgBtn.disabled = false;
         imgBtn.textContent = '生成图片';
         syncImgCount();
@@ -521,7 +541,7 @@
       })
       .catch(function (err) {
         removeNode(loading);
-        addMessage('assistant', (err && err.message) || C.text.errorMsg, { instant: true });
+        if (stillHere()) addMessage('assistant', (err && err.message) || C.text.errorMsg, { instant: true });
         imgBtn.disabled = false;
         imgBtn.textContent = '生成图片';
         syncImgCount();

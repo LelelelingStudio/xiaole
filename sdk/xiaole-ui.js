@@ -578,13 +578,16 @@
     imageGenBtn.textContent = '生成中…';
     if (!opts.quiet) addMessage('user', '画一张图：' + prompt, { instant: true });
 
+    // 记住发起的会话，生成回来时别串到别的对话
+    var convId = U.convs.currentId();
+    function stillHere() { return U.convs.currentId() === convId; }
     var loading = showLoading();
 
     NS.image
       .generate({ prompt: prompt })
       .then(function (res) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
-        addImageMessage(res);
+        if (stillHere()) addImageMessage(res);
         U.convs.append({
           role: 'assistant',
           type: 'image',
@@ -592,7 +595,7 @@
           url: res.url,
           prompt: prompt,
           content: '（生成了图片：' + prompt + '）'
-        });
+        }, convId);
         imageGenBtn.disabled = false;
         imageGenBtn.textContent = '生成';
         imagePromptEl.value = '';
@@ -601,7 +604,7 @@
       })
       .catch(function (err) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
-        addMessage('assistant', (err && err.message) || C.text.errorMsg, { instant: true });
+        if (stillHere()) addMessage('assistant', (err && err.message) || C.text.errorMsg, { instant: true });
         imageGenBtn.disabled = false;
         imageGenBtn.textContent = '生成';
         syncImageCount();
@@ -618,7 +621,8 @@
     inputEl.value = '';
     if (NS.character && NS.character.react) NS.character.react('happy');
     addMessage('user', text, { instant: true });
-    U.convs.append({ role: 'user', content: text, type: 'text' });
+    var sendConvId = U.convs.currentId();
+    U.convs.append({ role: 'user', content: text, type: 'text' }, sendConvId);
 
     var loading = showLoading();
     var assistant = null;
@@ -643,7 +647,7 @@
         loading = null;
         if (assistant) assistant.finish();
         var draw = U.extractDraw(full || '');
-        if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' });
+        if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         if (NS.character && NS.character.react) NS.character.react('happy');
         if (draw.prompts.length) submitImage(draw.prompts[0], { quiet: true });
         UI.hideTip();
@@ -681,7 +685,15 @@
 
   UI.restoreConv = function () {
     // 切会话时如果还在回答，先中断，避免串到新会话
-    if (NS.chat && NS.chat.session && NS.chat.session.busy) NS.chat.abort();
+    if (NS.chat && NS.chat.session && NS.chat.session.busy) {
+      var prevId = U.convs.currentId();
+      NS.chat.abort({
+        onStop: function (partial) {
+          var text = U.extractDraw(partial).text;
+          if (text) U.convs.append({ role: 'assistant', content: text + '\n\n（已中断）', type: 'text' }, prevId);
+        }
+      });
+    }
     var conv = U.convs.current();
     if (!conv) conv = U.convs.create('新对话', true);
     chatContextFromConv(conv);

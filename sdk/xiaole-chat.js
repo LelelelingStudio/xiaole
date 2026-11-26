@@ -67,6 +67,8 @@
   /* ================= 新对话 ================= */
 
   var activeController = null;
+  var activePartial = '';      // 当前流式已产出的文字（中断时用来保住半截回答）
+  var activeHandlers = null;
 
   Chat.newSession = function () {
     Chat.abort();
@@ -200,8 +202,11 @@
     }
     var timer = null;
     var full = '';
+    activePartial = '';
+    activeHandlers = handlers;
 
     function finish(err) {
+      activeHandlers = null;
       Chat.session.busy = false;
       if (timer) clearTimeout(timer);
       if (Chat.session.aborted && !err) {
@@ -293,6 +298,7 @@
               if (!piece) return;
 
               full += piece;
+              activePartial = full;
               if (handlers.onDelta) handlers.onDelta(piece, false);
             });
 
@@ -332,7 +338,9 @@
 
   /* ================= 中断 ================= */
 
-  Chat.abort = function () {
+  Chat.abort = function (opts) {
+    var partial = String(activePartial || '');
+    var hs = activeHandlers;
     Chat.session.aborted = true;
     Chat.session.aborting = true;
     Chat.session.busy = false;
@@ -340,5 +348,10 @@
       try { activeController.abort(); } catch (e) {}
       activeController = null;
     }
+    activeHandlers = null;
+    if (opts && typeof opts.onStop === 'function' && partial) {
+      try { opts.onStop(partial, hs); } catch (e) {}
+    }
+    activePartial = '';
   };
 })();

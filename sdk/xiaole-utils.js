@@ -561,14 +561,15 @@
       U.emit('conv', { action: 'remove', id: id });
       return d.currentId;
     },
-    append: function (msg) {
+    append: function (msg, convId) {
       var d = U.convs._read();
+      var targetId = convId || d.currentId;
       var conv = null;
-      for (var i = 0; i < d.list.length; i++) if (d.list[i].id === d.currentId) conv = d.list[i];
+      for (var i = 0; i < d.list.length; i++) if (d.list[i].id === targetId) conv = d.list[i];
       if (!conv) {
         conv = { id: U.uid('conv'), title: '新对话', messages: [], createdAt: Date.now() };
         d.list.unshift(conv);
-        d.currentId = conv.id;
+        if (!convId) d.currentId = conv.id;
       }
       conv.messages.push(msg);
       var max = (NS.config.conv || {}).maxMessages || 400;
