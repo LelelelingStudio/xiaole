@@ -133,7 +133,8 @@
     conv: {
       maxCount: 50,          // 最多保留 50 个对话
       maxMessages: 400,      // 单个对话最多存 400 条消息
-      titleLength: 18,       // 自动生成标题的字数
+      titleLength: 12,       // AI 总结的对话名字数
+      autoTitle: true,       // 第一次问答结束后由 AI 总结一次名字（之后不再总结）
       listLimit: 50
     },
 

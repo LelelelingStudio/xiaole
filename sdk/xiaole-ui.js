@@ -61,6 +61,7 @@
     header.innerHTML =
       '<div class="xl-cloud-title"><span class="xl-dot-live"></span>' + C.name + '</div>' +
       '<div class="xl-cloud-actions">' +
+      '<button class="xl-icon-btn" id="xl-history-btn" title="历史对话">☰</button>' +
       '<button class="xl-icon-btn" id="xl-new-chat" title="' + C.text.newChat + '">＋</button>' +
       '<button class="xl-icon-btn" id="xl-close" title="收起">×</button>' +
       '</div>';
@@ -112,6 +113,10 @@
 
     bubble.querySelector('#xl-image-toggle').addEventListener('click', function () {
       UI.toggleImagePanel();
+    });
+    bubble.querySelector('#xl-history-btn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      UI.openHistory();
     });
     bubble.querySelector('#xl-image-cancel').addEventListener('click', function () {
       UI.toggleImagePanel(false);
@@ -858,6 +863,7 @@
         var draw = U.extractDraw(full || '');
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         if (NS.character && NS.character.react) NS.character.react('happy');
+        UI.autoTitle(sendConvId, text, draw.text);
         if (draw.prompts.length) submitImage(draw.prompts[0], { quiet: true });
         UI.hideTip();
       },
@@ -942,6 +948,38 @@
     })();
   };
 
+  /** 第一次问答结束后，让 AI 总结一次对话名（之后不再总结） */
+  UI.autoTitle = function (convId, userText, replyText) {
+    if (!NS.chat || typeof NS.chat.title !== 'function') return;
+    var conv = convId ? U.convs.get(convId) : U.convs.current();
+    if (!conv || !conv.needTitle || conv.autoTitled) return;
+    NS.chat.title(userText, replyText).then(function (t) {
+      if (!t) return;
+      var now = U.convs.get(convId || (conv && conv.id));
+      if (!now || now.autoTitled) return; // 用户已经手动改过名，不覆盖
+      U.convs.rename(now.id, t);
+      UI.renderHistoryPanel();
+      if (typeof UI.onTitle === 'function') UI.onTitle(now.id, t);
+    });
+  };
+
+  function historyHTML() {
+    var convs = U.convs.all();
+    var cur = U.convs.currentId();
+    if (!convs.length) return '<div class="xl-history-empty">' + C.text.convEmpty + '</div>';
+    return convs.map(function (c) {
+      return '<div class="xl-history-item' + (c.id === cur ? ' on' : '') + '" data-id="' + c.id + '">' +
+        '<span class="xl-history-title" title="双击重命名">' + U.escape(c.title || '新对话') + '</span>' +
+        '<span class="xl-history-meta">' + U.timeText(c.updatedAt) + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  UI.renderHistoryPanel = function () {
+    var panel = document.getElementById('xl-history');
+    if (panel) panel.innerHTML = historyHTML();
+  };
+
   UI.openHistory = function () {
     var panel = document.getElementById('xl-history');
     if (panel) { panel.parentNode.removeChild(panel); return; }
@@ -949,19 +987,7 @@
     // 面板独立浮层：聊天框收起时也能看到，位置跟着角色/聊天框走
     panel = U.el('div', 'xl-history');
     panel.id = 'xl-history';
-    var convs = U.convs.all();
-    var cur = U.convs.currentId();
-
-    if (!convs.length) {
-      panel.innerHTML = '<div class="xl-history-empty">' + C.text.convEmpty + '</div>';
-    } else {
-      panel.innerHTML = convs.map(function (c) {
-        return '<div class="xl-history-item' + (c.id === cur ? ' on' : '') + '" data-id="' + c.id + '">' +
-          '<span class="xl-history-title">' + U.escape(c.title || '新对话') + '</span>' +
-          '<span class="xl-history-meta">' + U.timeText(c.updatedAt) + '</span>' +
-          '</div>';
-      }).join('');
-    }
+    panel.innerHTML = historyHTML();
 
     document.body.appendChild(panel);
 
@@ -975,9 +1001,49 @@
     }
     panel.style.bottom = ((C.character.bottom || 24) + size - 40) + 'px';
 
+    // 双击标题 → 就地改名（同 DeepSeek 侧栏）
+    panel.addEventListener('dblclick', function (e) {
+      var title = e.target.closest ? e.target.closest('.xl-history-title') : null;
+      if (!title) return;
+      var item = title.closest('.xl-history-item');
+      if (!item || item.classList.contains('editing')) return;
+      var id = item.getAttribute('data-id');
+      item.classList.add('editing');
+      var input = U.el('input', 'xl-history-input');
+      input.type = 'text';
+      input.maxLength = 24;
+      input.value = U.convs.get(id) ? (U.convs.get(id).title || '') : title.textContent;
+      title.style.display = 'none';
+      item.appendChild(input);
+      input.focus();
+      input.select();
+      var done = function (save) {
+        if (!item.parentNode) return;
+        var v = input.value;
+        if (input.parentNode) input.parentNode.removeChild(input);
+        title.style.display = '';
+        item.classList.remove('editing');
+        if (save && v && v.trim()) {
+          U.convs.rename(id, v);
+          UI.renderHistoryPanel();
+          if (typeof UI.onTitle === 'function') UI.onTitle(id, v.trim());
+        } else {
+          UI.renderHistoryPanel();
+        }
+      };
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); done(true); }
+        else if (ev.key === 'Escape') { ev.preventDefault(); done(false); }
+      });
+      input.addEventListener('blur', function () { done(true); });
+      input.addEventListener('click', function (ev) { ev.stopPropagation(); });
+      input.addEventListener('dblclick', function (ev) { ev.stopPropagation(); });
+    });
+
     panel.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('.xl-history-input')) return;
       var item = e.target.closest('.xl-history-item');
-      if (!item) return;
+      if (!item || item.classList.contains('editing')) return;
       var conv = U.convs.switchTo(item.getAttribute('data-id'));
       if (!conv) return;
       chatContextFromConv(conv);
@@ -985,6 +1051,7 @@
       UI.restoreConv();
       if (panel.parentNode) panel.parentNode.removeChild(panel);
       UI.open(); // 保证点完就能看到内容
+      if (typeof UI.onTitle === 'function') UI.onTitle(conv.id, conv.title);
     });
   };
 

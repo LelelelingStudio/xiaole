@@ -336,6 +336,71 @@
       });
   };
 
+  /* ================= 对话命名（第一次问答后由 AI 总结一次） ================= */
+
+  function cleanTitle(raw) {
+    var t = String(raw || '')
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/^[\s"'“”‘’《》「」:：\-]+/, '')
+      .replace(/[\s"'“”‘’《》「」]+$/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    t = t.split(/\n/)[0];
+    if (t.length > (C.conv && C.conv.titleLength || 12)) t = t.slice(0, C.conv && C.conv.titleLength || 12);
+    return t;
+  }
+
+  /**
+   * 根据第一轮问答生成对话标题（不参与主对话上下文）
+   * @returns {Promise<string>} 失败时 resolve ''
+   */
+  Chat.title = function (userText, replyText) {
+    var u = String(userText || '').slice(0, 400);
+    var a = String(replyText || '').slice(0, 600);
+    if (!u) return Promise.resolve('');
+    var prompt =
+      '请给下面这段对话起一个标题。要求：不超过 12 个字，中文，概括主题，' +
+      '不要标点结尾，不要引号，不要解释，只输出标题本身。\n\n' +
+      '用户：' + u + '\n助手：' + a;
+    var url = C.apiBase + C.chat.endpoint;
+    var body = JSON.stringify({
+      messages: [{ role: 'user', content: prompt }],
+      stream: false,
+      preset: C.state.preset || 'default',
+      fingerprint: U.fingerprint()
+    });
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (ct.indexOf('text/event-stream') !== -1) {
+          // 后端强制流式时，把 SSE 拼成整段文本
+          return res.text().then(function (raw) {
+            var out = '';
+            raw.split('\n').forEach(function (line) {
+              line = line.replace(/\r$/, '');
+              if (line.indexOf('data:') !== 0) return;
+              var payload = line.slice(5).trim();
+              if (!payload || payload === '[DONE]') return;
+              var parsed;
+              try { parsed = JSON.parse(payload); } catch (e) { parsed = payload; }
+              out += extractText(parsed);
+            });
+            return out;
+          });
+        }
+        return res.text().then(function (raw) {
+          try { return extractText(JSON.parse(raw)); } catch (e) { return raw; }
+        });
+      })
+      .then(function (text) { return cleanTitle(text); })
+      .catch(function () { return ''; });
+  };
+
   /* ================= 中断 ================= */
 
   Chat.abort = function (opts) {

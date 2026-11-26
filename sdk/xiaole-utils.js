@@ -575,13 +575,28 @@
       var max = (NS.config.conv || {}).maxMessages || 400;
       if (conv.messages.length > max) conv.messages = conv.messages.slice(-max);
       conv.updatedAt = Date.now();
-      if (msg.role === 'user' && (conv.title === '新对话' || !conv.title)) {
-        var t = String(msg.content || '').replace(/\s+/g, ' ').trim();
-        conv.title = t.slice(0, (NS.config.conv || {}).titleLength || 18) || '新对话';
-      }
+      // 标题交给 AI 在第一次问答结束后总结（这里只打标记，不再截取用户首句）
+      if (msg.role === 'user' && !conv.autoTitled) conv.needTitle = true;
       U.convs._write(d);
       U.emit('conv', { action: 'update', id: conv.id });
       return conv;
+    },
+    /** 重命名对话（AI 总结或用户手改都走这里） */
+    rename: function (id, title) {
+      var d = U.convs._read();
+      title = String(title || '').replace(/\s+/g, ' ').trim().slice(0, 24) || '新对话';
+      for (var i = 0; i < d.list.length; i++) {
+        if (d.list[i].id === id) {
+          d.list[i].title = title;
+          d.list[i].autoTitled = true;
+          d.list[i].needTitle = false;
+          d.list[i].updatedAt = Date.now();
+          U.convs._write(d);
+          U.emit('conv', { action: 'rename', id: id, title: title });
+          return true;
+        }
+      }
+      return false;
     },
     patchLast: function (msgIndex, patch) {
       var d = U.convs._read();

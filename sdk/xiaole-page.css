@@ -101,6 +101,19 @@ body::before {
 }
 
 .xlp-conv.active .xlp-conv-title { color: #3b5185; font-weight: 600; }
+
+.xlp-rename-input {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: #22315a;
+  padding: 2px 6px;
+  border: 1px solid #b6d0ff;
+  border-radius: 6px;
+  outline: none;
+  background: #fff;
+}
 .xlp-conv-meta {
   display: block;
   margin-top: 2px;

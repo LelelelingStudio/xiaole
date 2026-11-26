@@ -125,6 +125,14 @@
 
   function bind() {
     renderSuggest();
+    if (titleEl) {
+      titleEl.title = '双击可重命名';
+      titleEl.style.cursor = 'text';
+      titleEl.addEventListener('dblclick', function () {
+        var conv = U.convs.current();
+        if (conv) renameInline(titleEl, conv.id);
+      });
+    }
     sendBtn.addEventListener('click', submit);
 
     inputEl.addEventListener('keydown', function (e) {
@@ -194,8 +202,17 @@
     Array.prototype.forEach.call(convListEl.querySelectorAll('.xlp-conv'), function (row) {
       row.addEventListener('click', function (e) {
         if (e.target && e.target.getAttribute && e.target.getAttribute('data-del')) return;
+        if (e.target && e.target.classList && e.target.classList.contains('xlp-rename-input')) return;
+        if (e.target && e.target.closest && e.target.closest('.xlp-rename-input')) return;
         openConv(row.getAttribute('data-id'));
       });
+      var t = row.querySelector('.xlp-conv-title');
+      if (t) {
+        t.addEventListener('dblclick', function (e) {
+          e.stopPropagation();
+          renameInline(t, row.getAttribute('data-id'));
+        });
+      }
     });
 
     Array.prototype.forEach.call(convListEl.querySelectorAll('.xlp-conv-del'), function (btn) {
@@ -215,6 +232,58 @@
 
   function syncTitle(conv) {
     if (titleEl) titleEl.textContent = conv && conv.title && conv.title !== '新对话' ? conv.title : '小了';
+  }
+
+  /* ================= 对话改名（AI 总结 + 双击手改） ================= */
+
+  function autoTitle(convId, userText, replyText) {
+    var conv = convId ? U.convs.get(convId) : U.convs.current();
+    if (!conv || !conv.needTitle || conv.autoTitled) return;
+    if (typeof Chat.title !== 'function') return;
+    Chat.title(userText, replyText).then(function (t) {
+      if (!t) return;
+      var now = U.convs.get(convId || (conv && conv.id));
+      if (!now || now.autoTitled) return; // 用户改过名就不再覆盖
+      U.convs.rename(now.id, t);
+      refreshConvList();
+      if (now.id === U.convs.currentId()) syncTitle(now);
+    });
+  }
+
+  // 双击标题就地改名，回车保存、Esc 取消
+  function renameInline(el, convId, done) {
+    if (!el || el.getAttribute('data-editing') === '1') return;
+    var original = el.textContent;
+    el.setAttribute('data-editing', '1');
+    var input = document.createElement('input');
+    input.className = 'xlp-rename-input';
+    input.type = 'text';
+    input.maxLength = 24;
+    input.value = U.convs.get(convId) ? (U.convs.get(convId).title || '') : original;
+    el.style.display = 'none';
+    el.parentNode.insertBefore(input, el.nextSibling);
+    input.focus();
+    input.select();
+    var finish = function (save) {
+      if (!input.parentNode) return;
+      var v = input.value;
+      input.parentNode.removeChild(input);
+      el.style.display = '';
+      el.removeAttribute('data-editing');
+      if (save && v && v.trim()) {
+        U.convs.rename(convId, v);
+        refreshConvList();
+        var cur = U.convs.current();
+        if (cur && cur.id === convId) syncTitle(cur);
+        if (done) done(v.trim());
+      }
+    };
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', function () { finish(true); });
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
   }
 
   /* ================= 打开 / 新建会话 ================= */
@@ -509,6 +578,7 @@
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         hideTip();
         refreshConvList();
+        autoTitle(sendConvId, text, draw.text);
 
         // 模型自己发起的生图：扣额度、直接出图（仍记在发起的会话里）
         if (draw.prompts.length) {

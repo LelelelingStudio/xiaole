@@ -1011,6 +1011,20 @@
 }
 
 .xl-history-meta { font-size: 10px; color: #9aa7bf; }
+
+.xl-history-input {
+  width: 100%;
+  font-size: 12px;
+  color: #33415f;
+  border: 1px solid #b9d2ff;
+  border-radius: 6px;
+  padding: 3px 6px;
+  outline: none;
+  background: #fff;
+  font-family: inherit;
+}
+
+.xl-history-item.editing { background: #fff; }
 .xl-history-empty { padding: 14px 10px; font-size: 12px; color: #9aa7bf; text-align: center; }
 
 /* ===== 上下文超限跳转 ===== */
