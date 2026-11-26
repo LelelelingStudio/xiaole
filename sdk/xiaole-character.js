@@ -51,7 +51,7 @@
     return Promise.resolve();
   };
 
-  /* ================= 静态模式 ================= */
+  /* ================= 立绘模式：阴影 + 主图 + 表情帧 + 柔光 ================= */
 
   function assetUrl(path) {
     if (!path) return '';
@@ -59,97 +59,121 @@
     return C.baseUrl.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
   }
 
+  var frameEls = {};
+  var currentFrame = 'idle';
+  var blinkTimer = null;
+  var happyTimer = null;
+
+  function frameSet() {
+    var set = (C.character.frames && C.character.frames[gender]) || {};
+    return {
+      idle: set.idle || C.character.staticImage[gender],
+      blink: set.blink,
+      happy: set.happy
+    };
+  }
+
   function mountStatic() {
     root.innerHTML = '';
     layerEls = [];
+    frameEls = {};
 
-    img = new Image();
-    img.className = 'xl-character-img';
-    img.alt = C.name;
-    img.draggable = false;
-    img.onerror = function () {
-      // 图片缺失时用占位占位（不空白）
-      root.classList.add('xl-character-empty');
-      root.innerHTML = '<div class="xl-placeholder"><span>小</span></div>';
-    };
-    img.src = assetUrl(C.character.staticImage[gender]);
-    root.appendChild(img);
-    C.state.mode = 'static';
-  }
+    // 1) 柔光
+    var glow = U.el('span', 'xl-char-glow');
+    root.appendChild(glow);
+    // 2) 地面阴影
+    var shadow = U.el('span', 'xl-char-shadow');
+    root.appendChild(shadow);
+    // 3) 立绘舞台（呼吸动画作用在这一层，所有帧同步）
+    var stage = U.el('div', 'xl-char-stage');
+    root.appendChild(stage);
 
-  /* ================= 分层模式（预留，资源齐全时自动启用）================= */
+    var set = frameSet();
+    var names = ['idle'];
+    if (set.blink) names.push('blink');
+    if (set.happy) names.push('happy');
 
-  function layerPath(name) {
-    return assetUrl('assets/layers/' + gender + '/' + name + '.png');
-  }
-
-  /**
-   * 直接挂载分层素材，按实际加载成功数决定是否降级：
-   * - 成功 >= 5 层：进入 layered
-   * - 全部失败 / 8 秒内不足 5 层：回落静态整体图，再失败则占位
-   * 这样不必先探测再下载一遍，避免冷启动超时误判。
-   */
-  function mountLayered(onFallback) {
-    root.innerHTML = '';
-    layerEls = [];
-
-    var list = C.character.layers[gender] || [];
-    var loaded = 0;
-    var settled = 0;
-    var decided = false;
-    var timer = null;
-
-    function decide(ok) {
-      if (decided) return;
-      decided = true;
-      if (timer) clearTimeout(timer);
-      if (ok) {
-        C.state.mode = 'layered';
-        root.classList.remove('xl-character-empty');
-        U.emit('mode', C.state.mode);
-      } else {
-        if (typeof onFallback === 'function') onFallback();
-      }
-    }
-
-    function check() {
-      if (decided) return;
-      if (loaded >= 5) return decide(true);
-      if (settled >= list.length) return decide(false);
-    }
-
-    list.forEach(function (name) {
+    names.forEach(function (name, i) {
       var el = new Image();
-      el.className = 'xl-layer xl-layer-' + name;
-      el.draggable = false;
+      el.className = 'xl-character-img xl-char-frame' + (i === 0 ? ' is-on' : '');
       el.alt = C.name;
-      if (name === '04_iris') el.className += ' xl-layer-iris';
-
-      el.style.transformOrigin = '50% 100%';
-      var tf = (C.character.layerTransform[gender] || {})[name];
-      if (tf) {
-        var sc = tf.scale || 1;
-        var tx = tf.x || 0;
-        var ty = tf.y || 0;
-        el.dataset.baseTransform =
-          'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
-        el.style.transform = el.dataset.baseTransform;
-      }
-
-      el.onload = function () { loaded++; settled++; check(); };
-      el.onerror = function () { el.style.display = 'none'; settled++; check(); };
-
-      el.src = layerPath(name);
-      root.appendChild(el);
-      layerEls.push(el);
+      el.draggable = false;
+      el.dataset.frame = name;
+      el.src = assetUrl(set[name]);
+      el.onerror = function () {
+        if (name === 'idle') {
+          root.classList.add('xl-character-empty');
+          stage.innerHTML = '<div class="xl-placeholder"><span>小</span></div>';
+        } else {
+          // 表情帧缺失就把这一帧整个摘掉，避免切过去时角色消失
+          el.style.display = 'none';
+          delete frameEls[name];
+          if (currentFrame === name) setFrame('idle');
+        }
+      };
+      stage.appendChild(el);
+      frameEls[name] = el;
     });
 
-    // 慢网兜底：8 秒内还没凑够 5 层就降级，不留白
-    timer = setTimeout(function () {
-      if (loaded >= 5) decide(true);
-      else decide(false);
-    }, 8000);
+    currentFrame = 'idle';
+    C.state.mode = 'static';
+    startBlinkLoop();
   }
+
+  function setFrame(name) {
+    if (!frameEls[name] || !frameEls[name].parentNode) {
+      name = 'idle';
+      if (!frameEls.idle) return;
+    }
+    if (currentFrame === name) return;
+    Object.keys(frameEls).forEach(function (k) {
+      frameEls[k].classList.toggle('is-on', k === name);
+    });
+    currentFrame = name;
+  }
+
+  function startBlinkLoop() {
+    if (blinkTimer) clearTimeout(blinkTimer);
+    if (!C.character.blink || !frameEls.blink) return;
+
+    function schedule() {
+      var range = C.character.blinkRange || [3200, 6500];
+      var wait = range[0] + Math.random() * (range[1] - range[0]);
+      blinkTimer = setTimeout(function () {
+        if (!hidden && currentFrame === 'idle') {
+          setFrame('blink');
+          setTimeout(function () {
+            if (currentFrame === 'blink') setFrame('idle');
+          }, C.character.blinkDuration || 120);
+        }
+        schedule();
+      }, wait);
+    }
+    schedule();
+  }
+
+  /** 开心一下：收到回复 / 发消息 / 打开聊天时调用 */
+  Ch.react = function (kind) {
+    if (!root || hidden) return;
+    if (happyTimer) {
+      clearTimeout(happyTimer);
+      happyTimer = null;
+    }
+    if (kind === 'blink') {
+      if (!frameEls.blink) return;
+      setFrame('blink');
+      setTimeout(function () { if (currentFrame === 'blink') setFrame('idle'); }, C.character.blinkDuration || 120);
+      return;
+    }
+    if (!frameEls.happy) return;
+    setFrame('happy');
+    root.classList.add('xl-char-pop');
+    happyTimer = setTimeout(function () {
+      setFrame('idle');
+      root.classList.remove('xl-char-pop');
+      happyTimer = null;
+    }, C.character.happyDuration || 900);
+  };
 
   /* ================= 性别 ================= */
 

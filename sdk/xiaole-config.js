@@ -111,6 +111,16 @@
         girl: 'assets/static/girl.png',
         boy: 'assets/static/boy.png'
       },
+      // 表情帧：同一姿势只改脸，用于眨眼 / 开心反应（没有就自动只用主图）
+      frames: {
+        girl: { idle: 'assets/static/girl.png', blink: 'assets/static/girl-blink.png', happy: 'assets/static/girl-happy.png' },
+        boy: { idle: 'assets/static/boy.png', blink: 'assets/static/boy-blink.png', happy: 'assets/static/boy-happy.png' }
+      },
+      // 眨眼间隔区间（毫秒）与单次眨眼时长
+      blinkRange: [3200, 6500],
+      blinkDuration: 120,
+      // 收到回复 / 发消息时开心一下
+      happyDuration: 900,
       // 是否启用 8 层分层合成。当前素材各层取景比例不一致，合成后会错位，
       // 因此默认关闭；等拿到同构图、同画布的图层素材后改成 true 即可自动升级。
       useLayers: false,

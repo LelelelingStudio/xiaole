@@ -66,7 +66,10 @@
 
   /* ================= 新对话 ================= */
 
+  var activeController = null;
+
   Chat.newSession = function () {
+    Chat.abort();
     Chat.session.messages = [];
     Chat.session.busy = false;
     Chat.session.aborted = true;
@@ -191,13 +194,19 @@
     });
 
     var controller = null;
-    if (typeof AbortController !== 'undefined') controller = new AbortController();
+    if (typeof AbortController !== 'undefined') {
+      controller = new AbortController();
+      activeController = controller;
+    }
     var timer = null;
     var full = '';
 
     function finish(err) {
       Chat.session.busy = false;
       if (timer) clearTimeout(timer);
+      if (Chat.session.aborted && !err) {
+        return; // 用户切走了，别把半截回答写进别的会话
+      }
       if (err) {
         if (handlers.onError) handlers.onError(err);
       } else {
@@ -301,6 +310,11 @@
       .catch(function (err) {
         Chat.session.busy = false;
         if (timer) clearTimeout(timer);
+        // 用户自己切会话/中断的，安静结束，不弹错误
+        if (Chat.session.aborting) {
+          Chat.session.aborting = false;
+          return full;
+        }
         if (Chat.session.aborted && !full) {
           if (handlers.onError) handlers.onError(err);
           return full;
@@ -320,6 +334,11 @@
 
   Chat.abort = function () {
     Chat.session.aborted = true;
+    Chat.session.aborting = true;
     Chat.session.busy = false;
+    if (activeController) {
+      try { activeController.abort(); } catch (e) {}
+      activeController = null;
+    }
   };
 })();

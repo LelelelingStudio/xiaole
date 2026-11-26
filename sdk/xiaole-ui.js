@@ -283,6 +283,7 @@
   /* ================= 开合 ================= */
 
   UI.open = function () {
+    if (NS.character && NS.character.react) NS.character.react('happy');
     if (open) return;
     open = true;
     bubble.classList.add('xl-open');
@@ -615,6 +616,7 @@
     if (!text) return;
 
     inputEl.value = '';
+    if (NS.character && NS.character.react) NS.character.react('happy');
     addMessage('user', text, { instant: true });
     U.convs.append({ role: 'user', content: text, type: 'text' });
 
@@ -642,6 +644,7 @@
         if (assistant) assistant.finish();
         var draw = U.extractDraw(full || '');
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' });
+        if (NS.character && NS.character.react) NS.character.react('happy');
         if (draw.prompts.length) submitImage(draw.prompts[0], { quiet: true });
         UI.hideTip();
       },
@@ -677,6 +680,8 @@
   }
 
   UI.restoreConv = function () {
+    // 切会话时如果还在回答，先中断，避免串到新会话
+    if (NS.chat && NS.chat.session && NS.chat.session.busy) NS.chat.abort();
     var conv = U.convs.current();
     if (!conv) conv = U.convs.create('新对话', true);
     chatContextFromConv(conv);

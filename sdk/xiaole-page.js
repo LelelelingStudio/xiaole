@@ -185,6 +185,8 @@
   /* ================= 打开 / 新建会话 ================= */
 
   function openConv(id) {
+    // 正在回答时切会话：先中断，别把半截回答写进另一个会话
+    if (Chat.session.busy) Chat.abort();
     var conv = U.convs.switchTo(id);
     if (!conv) return;
     setImgPanel(false);
@@ -426,6 +428,7 @@
     inputEl.value = '';
     inputEl.style.height = 'auto';
     addMessage('user', text, { instant: true });
+    if (NS.character && NS.character.react) NS.character.react('happy');
     U.convs.append({ role: 'user', content: text, type: 'text' });
     refreshConvList();
 
