@@ -126,7 +126,7 @@
       style: 'frames',
       // 8 层已按相对坐标烘焙对齐（assets/layers-aligned/<性别>/），画布比例 480×760
       layersDir: 'assets/layers-aligned',
-      layersCanvas: { w: 480, h: 760 },
+      layersCanvas: { w: 400, h: 760 },
       // 分层里默认不显示的部分（07 大蝴蝶结会挡住脸，想戴就删掉这条）
       layerHidden: ['07_accessory'],
       // 是否启用原始 8 层（取景未对齐，需自己配 layerTransform），一般不要开
