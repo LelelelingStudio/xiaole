@@ -277,6 +277,7 @@
     if (NS.ui) NS.ui.newChat();
   };
   NS.setGender = function (g) { if (NS.character) NS.character.setGender(g); };
+  NS.sayNow = function (text) { return NS.ui && NS.ui.sayNow ? NS.ui.sayNow(text) : false; };
   NS.wave = function () { return NS.character ? NS.character.wave() : false; };
   NS.generateImage = function (opts) { return NS.image ? NS.image.generate(opts) : Promise.reject(); };
 

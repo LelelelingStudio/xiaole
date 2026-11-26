@@ -173,6 +173,8 @@ http://127.0.0.1:8899/index.html?api=http://127.0.0.1:8899/api
 
 - 流式对话 + 打字机（默认 45 字/秒，`config.chat.typeSpeed`）
 - 10 条本地随机欢迎语（不请求后端）
+- **预设问题**：新对话时输入框上方出现一排胶囊按钮（「介绍一下你自己」等，`config.suggestions.items` 可改），点一下直接问；一旦有消息就自动收起。悬浮框与网页版都有
+- **闲时自言自语**：角色空闲 30–90 秒随机说一句（`config.idleTalk`，纯前端台词库，不请求后端），以角色头顶的小云朵气泡展示，点一下就打开聊天；聊天框开着、页面切到后台、角色被隐藏、或你 12 秒内有操作时都不会出声，同一句不会连着出现
 - **Markdown 渲染**：标题 / 列表 / 引用 / 分隔线 / 加粗斜体 / 行内代码 / 代码块（带语言、复制与下载按钮）/ 表格（可一键存为 CSV）
 - **可点击链接**：`[文字](https://...)` 与简写 `[[文字|链接]]`；常见文件类型链接自动带 `download` 并显示「下载」标签
 - **文件下载**：文件类链接点一下即下载（pdf/zip/doc/xlsx/图片/音视频等）；代码块「下载」直接存成对应后缀文件，表格「存为 CSV」导出带 BOM 的 CSV
@@ -206,6 +208,7 @@ Xiaole.openChat();  Xiaole.closeChat();  Xiaole.toggleChat();
 Xiaole.newChat();   Xiaole.clearChat();
 Xiaole.setGender('girl');  // 'girl' | 'boy'
 Xiaole.wave();             // 挥一下手（没有挥手素材时返回 false）
+Xiaole.sayNow();           // 立刻说一句闲话（台词也可传入：sayNow('在吗')）
 Xiaole.generateImage({ prompt: '一只猫' });
 ```
 

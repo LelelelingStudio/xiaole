@@ -809,3 +809,42 @@ body::before {
   transition: background 0.18s ease;
 }
 .xlp-msg-text .xl-save-table:hover { background: #eef5ff; }
+
+
+/* ===== 预设问题（网页版） ===== */
+.xlp-suggest {
+  padding: 2px 4px 10px;
+  display: none;
+}
+
+.xlp-suggest.is-on { display: block; }
+
+.xlp-suggest-title {
+  font-size: 12px;
+  color: #9aa7c0;
+  margin: 0 2px 8px;
+}
+
+.xlp-suggest-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xlp-suggest-item {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid #e3ecfb;
+  background: #f7faff;
+  color: #4c5d87;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s;
+}
+
+.xlp-suggest-item:hover {
+  background: #eef4ff;
+  border-color: #cfdffb;
+  color: #33509c;
+}

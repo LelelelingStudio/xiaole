@@ -68,6 +68,7 @@
       '<button class="xlp-img-gen" id="xlp-img-gen">生成图片</button>' +
       '</div>' +
       '</div>' +
+      '<div class="xlp-suggest" id="xlp-suggest"></div>' +
       '<div class="xlp-input-row">' +
       '<button class="xlp-icon" id="xlp-img-toggle" title="生成图片">画</button>' +
       '<textarea class="xlp-input" id="xlp-input" rows="1" placeholder="' + C.text.placeholder + '"></textarea>' +
@@ -89,7 +90,41 @@
     titleEl = document.getElementById('xlp-conv-title');
   }
 
+  function renderSuggest() {
+    var el = document.getElementById('xlp-suggest');
+    var cfg = C.suggestions || {};
+    if (!el) return;
+    if (!cfg.enabled || !(cfg.items || []).length) { el.style.display = 'none'; return; }
+    var html = '<div class="xlp-suggest-title">' + (cfg.title || '') + '</div><div class="xlp-suggest-list">';
+    cfg.items.forEach(function (t) {
+      html += '<button class="xlp-suggest-item" type="button" data-text="' +
+        String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">' + t + '</button>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+    el.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.xlp-suggest-item') : null;
+      if (!btn) return;
+      e.preventDefault();
+      inputEl.value = btn.getAttribute('data-text') || btn.textContent;
+      submit();
+    });
+    refreshSuggest();
+  }
+
+  function refreshSuggest() {
+    var el = document.getElementById('xlp-suggest');
+    var cfg = C.suggestions || {};
+    if (!el) return;
+    var conv = U.convs.current && U.convs.current();
+    var empty = !(conv && conv.messages && conv.messages.length);
+    var show = !!cfg.enabled && !!(cfg.items || []).length && (cfg.onlyEmptyConv === false || empty);
+    el.classList.toggle('is-on', show);
+    el.style.display = show ? 'block' : 'none';
+  }
+
   function bind() {
+    renderSuggest();
     sendBtn.addEventListener('click', submit);
 
     inputEl.addEventListener('keydown', function (e) {
@@ -231,6 +266,7 @@
   }
 
   function clearMessages() {
+    if (typeof refreshSuggest === 'function') refreshSuggest();
     if (revealedTimer) {
       clearInterval(revealedTimer);
       revealedTimer = null;

@@ -37,7 +37,7 @@
     <h1>小了 SDK 测试页</h1>
     <p>点右下角（或左下角）的小了就能聊天</p>
     <p class="hint">URL 加 <code>?anchor=left</code> 可切到左边站位，加 <code>?anchor=right</code> 切回右边；加 <code>?char=layers</code> 看 8 层合成版、<code>?char=frames</code> 看表情帧版</p>
-    <p style="margin-top:12px"><button id="demo-wave">让她挥个手</button></p>
+    <p style="margin-top:12px"><button id="demo-wave">让她挥个手</button> <button id="demo-say">让她说句话</button></p>
   </div>
 
   <style>
@@ -48,7 +48,12 @@
       padding: 7px 16px; border-radius: 999px; border: 1px solid #c9d8f5;
       background: #fff; color: #3d55a0;
     }
-    #demo-wave:active { transform: translateY(1px); }
+    #demo-wave:active, #demo-say:active { transform: translateY(1px); }
+    #demo-say {
+      font: inherit; font-size: 13px; cursor: pointer;
+      padding: 7px 16px; border-radius: 999px; border: 1px solid #c9d8f5;
+      background: #fff; color: #3d55a0;
+    }
   </style>
 
   <!-- 接入方式：就这一段。站位用 data-anchor="left|right" 让宿主自己选 -->
@@ -72,6 +77,9 @@
     // 方便验证挥手：SDK 就绪后点按钮触发（对外 API 是 Xiaole.wave()）
     document.getElementById('demo-wave').addEventListener('click', function () {
       if (window.Xiaole && window.Xiaole.wave) window.Xiaole.wave();
+    });
+    document.getElementById('demo-say').addEventListener('click', function () {
+      if (window.Xiaole && window.Xiaole.sayNow) window.Xiaole.sayNow();
     });
   </script>
 </body>

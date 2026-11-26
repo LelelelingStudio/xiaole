@@ -24,6 +24,12 @@
   var imagePromptEl = null;
   var imageGenBtn = null;
   var imageCountEl = null;
+  var suggestEl = null;
+  var sayEl = null;
+  var sayTimer = null;
+  var sayNextTimer = null;
+  var lastInteract = 0;
+  var sayQueue = [];
   var open = false;
 
   // 打字机状态
@@ -41,6 +47,7 @@
     U.imgStore.gc();
     UI.restoreConv();
     syncImageCount();
+    UI.startIdleTalk();
     return Promise.resolve();
   };
 
@@ -83,9 +90,14 @@
     tipEl = U.el('div', 'xl-tip');
     tipEl.id = 'xl-tip';
 
+    suggestEl = U.el('div', 'xl-suggest');
+    suggestEl.id = 'xl-suggest';
+    buildSuggestions();
+
     bubble.appendChild(header);
     bubble.appendChild(listEl);
     bubble.appendChild(tipEl);
+    bubble.appendChild(suggestEl);
     bubble.appendChild(imagePanel);
     bubble.appendChild(footer);
     document.body.appendChild(bubble);
@@ -116,6 +128,18 @@
     newChatBtn.addEventListener('click', function () {
       UI.newChat();
     });
+    inputEl.addEventListener('input', function () { UI.touch(); });
+    suggestEl.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.xl-suggest-item') : null;
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var text = btn.getAttribute('data-text') || btn.textContent;
+      inputEl.value = text;
+      UI.touch();
+      submit();
+    });
+
     bubble.querySelector('#xl-close').addEventListener('click', function () {
       UI.close();
     });
@@ -215,6 +239,14 @@
   /* ================= 全局事件 ================= */
 
   function bindGlobal() {
+    // 任何一次用户操作都算「不闲」，闲时气泡会等一会儿再说
+    ['mousemove', 'keydown', 'pointerdown', 'wheel'].forEach(function (ev) {
+      document.addEventListener(ev, function () { UI.touch(); }, { passive: true });
+    });
+
+    // 窗口变化时重新贴一次直线
+    window.addEventListener('resize', function () { if (open) positionBubble(); });
+
     // 角色点击 → 开合聊天框
     window.addEventListener('xiaole:toggle-chat', function () {
       UI.toggle();
@@ -280,10 +312,181 @@
     tipEl.appendChild(link);
   };
 
+  // 聊天框贴着角色头顶上方，避免压住她的脸（宿主 size 不同也能自适应）
+  function positionBubble() {
+    if (!bubble) return;
+    var chEl = NS.character && NS.character.el && NS.character.el();
+    if (!chEl) return;
+    var r = chEl.getBoundingClientRect();
+    if (!r.height) return;
+    var b = Math.round(window.innerHeight - r.top + 8);
+    bubble.style.bottom = b + 'px';
+    bubble.style.maxHeight = Math.max(240, window.innerHeight - b - 14) + 'px';
+  }
+
+  /* ================= 预设问题（纯前端） ================= */
+
+  function convIsEmpty() {
+    var conv = U.convs.current && U.convs.current();
+    if (!conv) return true;
+    return !(conv.messages && conv.messages.length);
+  }
+
+  function buildSuggestions() {
+    var cfg = C.suggestions || {};
+    if (!suggestEl) return;
+    var items = cfg.items || [];
+    if (!cfg.enabled || !items.length) {
+      suggestEl.innerHTML = '';
+      suggestEl.style.display = 'none';
+      return;
+    }
+    var html = '<div class="xl-suggest-title">' + (cfg.title || '') + '</div><div class="xl-suggest-list">';
+    items.forEach(function (t) {
+      html += '<button class="xl-suggest-item" type="button" data-text="' +
+        String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">' + t + '</button>';
+    });
+    html += '</div>';
+    suggestEl.innerHTML = html;
+  }
+
+  UI.refreshSuggest = function () {
+    if (!suggestEl) return;
+    var cfg = C.suggestions || {};
+    var show = !!cfg.enabled && !!(cfg.items || []).length;
+    if (show && cfg.onlyEmptyConv !== false && !convIsEmpty()) show = false;
+    suggestEl.classList.toggle('is-on', show);
+    suggestEl.style.display = show ? '' : 'none';
+  };
+
+  /* ================= 闲时自言自语：30–90 秒随机一句小云朵 ================= */
+
+  function buildSayBubble() {
+    sayEl = U.el('div', 'xl-say');
+    sayEl.id = 'xl-say';
+    sayEl.innerHTML = '<span class="xl-say-text"></span>';
+    sayEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      hideSay();
+      UI.open();
+    });
+    document.body.appendChild(sayEl);
+  }
+
+  UI.touch = function () {
+    lastInteract = Date.now();
+  };
+
+  function pickLine() {
+    var cfg = C.idleTalk || {};
+    var lines = cfg.lines || [];
+    if (!lines.length) return '';
+    if (!sayQueue.length) {
+      sayQueue = lines.slice();
+      for (var i = sayQueue.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = sayQueue[i]; sayQueue[i] = sayQueue[j]; sayQueue[j] = t;
+      }
+    }
+    return sayQueue.pop();
+  }
+
+  function positionSay() {
+    if (!sayEl) return;
+    var chEl = NS.character && NS.character.el && NS.character.el();
+    if (!chEl) return;
+    var r = chEl.getBoundingClientRect();
+    if (!r.width) return;
+    var isLeft = (C.character && C.character.anchor) === 'left';
+    sayEl.style.top = Math.max(8, r.top - sayEl.offsetHeight - 10) + 'px';
+    if (isLeft) {
+      sayEl.style.left = Math.max(8, r.left + r.width * 0.5) + 'px';
+      sayEl.style.right = 'auto';
+    } else {
+      sayEl.style.right = Math.max(8, window.innerWidth - (r.left + r.width * 0.9)) + 'px';
+      sayEl.style.left = 'auto';
+    }
+  }
+
+  function hideSay() {
+    if (sayTimer) { clearTimeout(sayTimer); sayTimer = null; }
+    if (sayEl) {
+      sayEl.classList.remove('is-on');
+      if (NS.character && NS.character.isHidden && NS.character.isHidden()) return;
+    }
+  }
+
+  function showSay() {
+    var cfg = C.idleTalk || {};
+    if (!cfg.enabled || !sayEl) return;
+    if (open || document.hidden) return;
+    if (NS.character && NS.character.isHidden && NS.character.isHidden()) return;
+    var gap = (cfg.minIdle === 0) ? 0 : (cfg.minIdle || 12000);
+    if (Date.now() - (lastInteract || 0) < gap) return;
+    var text = pickLine();
+    if (!text) return;
+    sayEl.querySelector('.xl-say-text').textContent = text;
+    sayEl.style.display = 'block';
+    positionSay();
+    // 强制一次回流，让过渡生效
+    void sayEl.offsetWidth;
+    sayEl.classList.add('is-on');
+    if (NS.character && NS.character.react) NS.character.react('happy');
+    if (sayTimer) clearTimeout(sayTimer);
+    sayTimer = setTimeout(hideSay, cfg.duration || 6500);
+  }
+
+  function scheduleSay() {
+    var cfg = C.idleTalk || {};
+    if (!cfg.enabled) return;
+    if (sayNextTimer) clearTimeout(sayNextTimer);
+    var min = cfg.minGap || 30000;
+    var max = cfg.maxGap || 90000;
+    var wait = min + Math.random() * Math.max(0, max - min);
+    sayNextTimer = setTimeout(function () {
+      showSay();
+      scheduleSay();
+    }, wait);
+  }
+
+  UI.sayNow = function (text) {
+    if (!sayEl) buildSayBubble();
+    var cfg = C.idleTalk || {};
+    if (text) {
+      sayEl.querySelector('.xl-say-text').textContent = text;
+    } else if (!sayEl.querySelector('.xl-say-text').textContent) {
+      sayEl.querySelector('.xl-say-text').textContent = pickLine();
+    }
+    sayEl.style.display = 'block';
+    positionSay();
+    void sayEl.offsetWidth;
+    sayEl.classList.add('is-on');
+    if (sayTimer) clearTimeout(sayTimer);
+    sayTimer = setTimeout(hideSay, cfg.duration || 6500);
+    return true;
+  };
+
+  UI.startIdleTalk = function () {
+    var cfg = C.idleTalk || {};
+    if (!cfg.enabled) return;
+    buildSayBubble();
+    lastInteract = Date.now();
+    scheduleSay();
+    if (window.Xiaole && window.Xiaole.config && window.Xiaole.config.debugSay) {
+      setTimeout(function () { showSay(); }, 800);
+    }
+  };
+
+  UI.hideSay = hideSay;
+
   /* ================= 开合 ================= */
 
   UI.open = function () {
     if (NS.character && NS.character.react) NS.character.react('happy');
+    if (UI.hideSay) UI.hideSay();
+    if (UI.touch) UI.touch();
+    if (UI.refreshSuggest) UI.refreshSuggest();
+    positionBubble();
     if (open) return;
     // 第一次打开聊天时顺手挥个手（有挥手素材时才会生效）
     if (NS.character && NS.character.wave && Math.random() < 0.7) {
@@ -628,6 +831,8 @@
     var sendConvId = U.convs.currentId();
     U.convs.append({ role: 'user', content: text, type: 'text' }, sendConvId);
 
+    if (UI.refreshSuggest) UI.refreshSuggest();
+
     var loading = showLoading();
     var assistant = null;
 
@@ -675,6 +880,7 @@
     UI.hideTip();
     U.sound.play('open');
     UI.open();
+    if (UI.refreshSuggest) UI.refreshSuggest();
   };
 
   /* ================= 多对话（与网页版共享同一份本地记录） ================= */
@@ -703,6 +909,7 @@
     chatContextFromConv(conv);
     UI.clearMessages();
 
+    if (UI.refreshSuggest) UI.refreshSuggest();
     var msgs = (conv.messages || []).slice();
     if (!msgs.length) {
       renderWelcome();
