@@ -84,7 +84,9 @@
   var layerIris = null;
   var layerBlush = null;
   var rigBody = null;
+  var rigArm = null;
   var waveImg = null;
+  var waveBodyImg = null;
   var waveTimer = null;
 
   function frameSet() {
@@ -273,6 +275,15 @@
     bodyImg.src = rigPath(map.body || 'body');
     stage.appendChild(bodyImg);
 
+    // 手臂单独一层：挥手时绕肩部旋转，平时隐藏
+    var armImg = new Image();
+    armImg.className = 'xl-rig-arm';
+    armImg.alt = '';
+    armImg.draggable = false;
+    armImg.onerror = function () { armImg.style.display = 'none'; };
+    stage.appendChild(armImg);
+    rigArm = armImg;
+
     var headWrap = U.el('div', 'xl-rig-head');
     stage.appendChild(headWrap);
 
@@ -327,38 +338,71 @@
     startBlinkLoop();
   }
 
-  /** 挥手：身体层换成抬手臂版，1.2s 后换回来 */
+  /** 挥手：手臂提成独立图层，绕肩部旋转抬起，再左右摆动 */
   Ch.wave = function () {
     var map = C.character.rig || {};
-    var waveName = map.wave && map.wave[gender];
-    if (!waveName || !rigBody || C.state.mode !== 'rig' || hidden) return false;
-    if (waveTimer) clearTimeout(waveTimer);
+    var raw = map.wave && map.wave[gender];
+    if (!raw || !rigBody || !rigArm || C.state.mode !== 'rig' || hidden) return false;
+    var cfg = typeof raw === 'string' ? { arm: raw, body: '', origin: '' } : raw;
+    if (!cfg.arm) return false;
+    if (waveTimer) { clearTimeout(waveTimer); waveTimer = null; }
 
+    var dur = map.waveDuration || 1600;
     var idleSrc = rigPath(map.body || 'body');
-    var waveSrc = rigPath(waveName);
-    if (waveImg && waveImg.dataset.gender === gender && waveImg.dataset.name === waveName) {
-      applyWave();
+    var armSrc = rigPath(cfg.arm);
+    var bodySrc = cfg.body ? rigPath(cfg.body) : '';
+    rigArm.style.transformOrigin = cfg.origin || '64% 41%';
+    rigArm.style.transform = 'rotate(' + (cfg.rest || 95) + 'deg)';
+    rigArm.style.transition = 'none';
+
+    function start() {
+      if (!rigBody || !rigArm) return;
+      if (bodySrc) rigBody.src = bodySrc;
+      root.classList.add('xl-char-wave');
+      // 换图后用一帧时间让浏览器提交样式，再启动旋转动画
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          if (!rigArm) return;
+          rigArm.style.transition = '';
+          rigArm.classList.add('is-on');
+          waveTimer = setTimeout(function () {
+            if (!rigBody || !rigArm) return;
+            rigArm.classList.remove('is-on');
+            rigArm.style.transition = 'opacity .16s linear, transform .22s ease-in';
+            rigArm.style.transform = 'rotate(' + (cfg.rest || 95) + 'deg)';
+            setTimeout(function () {
+              if (!rigBody || !rigArm) return;
+              rigBody.src = idleSrc;
+              root.classList.remove('xl-char-wave');
+              rigArm.style.transition = '';
+              waveTimer = null;
+            }, 240);
+          }, dur);
+        });
+      });
+    }
+
+    var pending = 0;
+    function tryStart() { if (pending === 0) start(); }
+    // 缓存判定：同一性别同一套图直接播
+    if (waveImg && waveImg.dataset.key === gender + ':' + cfg.arm &&
+        (!bodySrc || (waveBodyImg && waveBodyImg.dataset.key === gender + ':' + cfg.body))) {
+      start();
       return true;
     }
+    pending = 1 + (bodySrc ? 1 : 0);
     waveImg = new Image();
-    waveImg.dataset.gender = gender;
-    waveImg.dataset.name = waveName;
-    waveImg.onload = function () { if (C.state.mode === 'rig') applyWave(); };
-    waveImg.onerror = function () { waveImg = null; };
-    waveImg.src = waveSrc;
-
-    function applyWave() {
-      if (!rigBody) return;
-      rigBody.src = waveSrc;
-      rigBody.style.zIndex = '2.5';
-      root.classList.add('xl-char-wave');
-      waveTimer = setTimeout(function () {
-        if (!rigBody) return;
-        rigBody.src = idleSrc;
-        rigBody.style.zIndex = '';
-        root.classList.remove('xl-char-wave');
-        waveTimer = null;
-      }, map.waveDuration || 1250);
+    waveImg.dataset.key = gender + ':' + cfg.arm;
+    waveImg.onload = function () { pending--; tryStart(); };
+    waveImg.onerror = function () { pending = 0; waveImg = null; };
+    waveImg.src = armSrc;
+    rigArm.src = armSrc;
+    if (bodySrc) {
+      waveBodyImg = new Image();
+      waveBodyImg.dataset.key = gender + ':' + cfg.body;
+      waveBodyImg.onload = function () { pending--; tryStart(); };
+      waveBodyImg.onerror = function () { pending--; bodySrc = ''; tryStart(); };
+      waveBodyImg.src = bodySrc;
     }
     return true;
   };

@@ -179,9 +179,12 @@
         coreSuffix: '_core',
         tails: { girl: ['tail_l', 'tail_r'], boy: [] },
         tailOrigin: { tail_l: '28% 36%', tail_r: '75% 36%' },
-        // 挥手用的身体层（没有就跳过挥手）；挥手时身体会临时盖在长发上面，手势才看得见
-        wave: { girl: 'body_wave', boy: '' },
-        waveDuration: 1250
+        // 挥手：手臂是独立图层，绕肩部旋转抬起（arm=抬臂层，body=去手身体，origin=肩部支点）
+        wave: {
+          girl: { arm: 'arm_wave', body: 'body_noarm', origin: '64.4% 41.2%' },
+          boy: { arm: 'arm_wave', body: 'body_noarm', origin: '62.8% 48.8%' }
+        },
+        waveDuration: 1600,
       },
       // 8 层已按相对坐标烘焙对齐（assets/layers-aligned/<性别>/），画布比例 480×760
       layersDir: 'assets/layers-aligned',
