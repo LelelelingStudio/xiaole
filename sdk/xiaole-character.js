@@ -30,8 +30,8 @@
 
     root = U.el('div', 'xl-character');
     root.id = 'xl-character';
-    root.style.width = C.character.size + 'px';
     root.style.height = C.character.size + 'px';
+    root.style.width = Math.round(C.character.size * rootAspect()) + 'px';
     if (C.character.anchor === 'left') {
       root.style.left = C.character.left + 'px';
       root.style.right = 'auto';
@@ -53,6 +53,16 @@
 
   /* ================= 立绘模式：阴影 + 主图 + 表情帧 + 柔光 ================= */
 
+  function layeredMode() {
+    return C.character.style === 'layers' || C.character.useLayers;
+  }
+
+  function rootAspect() {
+    if (!layeredMode()) return 1;
+    var cv = C.character.layersCanvas || { w: 480, h: 760 };
+    return cv.w / cv.h;
+  }
+
   function assetUrl(path) {
     if (!path) return '';
     if (/^https?:\/\//.test(path) || path.charAt(0) === '/') return path;
@@ -63,6 +73,8 @@
   var currentFrame = 'idle';
   var blinkTimer = null;
   var happyTimer = null;
+  var layerIris = null;
+  var layerBlush = null;
 
   function frameSet() {
     var set = (C.character.frames && C.character.frames[gender]) || {};
@@ -152,9 +164,52 @@
     schedule();
   }
 
+  function layerOcclude(on) {
+    // 分层模式下「闭眼」= 把眼珠层收起来（脸底没有眼形，看起来就是闭眼）
+    if (!layerIris) return;
+    layerIris.style.opacity = on ? '0' : '';
+    layerIris.style.transform = on ? 'scaleY(0.35)' : (layerIris.dataset.baseTransform || '');
+  }
+
+  function startLayerBlink() {
+    if (blinkTimer) clearTimeout(blinkTimer);
+    if (!C.character.blink || !layerIris) return;
+
+    function schedule() {
+      var range = C.character.blinkRange || [3200, 6500];
+      var wait = range[0] + Math.random() * (range[1] - range[0]);
+      blinkTimer = setTimeout(function () {
+        if (!hidden && C.state.mode === 'layered') {
+          layerOcclude(true);
+          setTimeout(function () { layerOcclude(false); }, C.character.blinkDuration || 120);
+        }
+        schedule();
+      }, wait);
+    }
+    schedule();
+  }
+
   /** 开心一下：收到回复 / 发消息 / 打开聊天时调用 */
   Ch.react = function (kind) {
     if (!root || hidden) return;
+
+    // 分层画法：眨眼靠收眼珠层，开心靠弹一下 + 腮红加强
+    if (C.state.mode === 'layered' && !frameEls.happy) {
+      if (happyTimer) { clearTimeout(happyTimer); happyTimer = null; }
+      if (kind === 'blink') {
+        layerOcclude(true);
+        setTimeout(function () { layerOcclude(false); }, C.character.blinkDuration || 120);
+        return;
+      }
+      root.classList.add('xl-char-pop');
+      if (layerBlush) layerBlush.style.filter = 'saturate(1.4)';
+      happyTimer = setTimeout(function () {
+        root.classList.remove('xl-char-pop');
+        if (layerBlush) layerBlush.style.filter = '';
+        happyTimer = null;
+      }, C.character.happyDuration || 900);
+      return;
+    }
     if (happyTimer) {
       clearTimeout(happyTimer);
       happyTimer = null;
@@ -175,6 +230,75 @@
     }, C.character.happyDuration || 900);
   };
 
+  /* ================= 分层模式：8 张已对齐的层按同一画布叠起来 ================= */
+
+  function layerPath(name) {
+    var dir = (C.character.layersDir || 'assets/layers-aligned').replace(/\/$/, '');
+    return assetUrl(dir + '/' + gender + '/' + name + '.png');
+  }
+
+  function mountLayered(onFallback) {
+    root.innerHTML = '';
+    layerEls = [];
+    frameEls = {};
+    layerIris = null;
+    layerBlush = null;
+
+    // 柔光 + 阴影（和表情帧模式一致，只是主角换成 8 个层）
+    root.appendChild(U.el('span', 'xl-char-glow'));
+    root.appendChild(U.el('span', 'xl-char-shadow'));
+    var stage = U.el('div', 'xl-char-stage');
+    root.appendChild(stage);
+
+    var list = C.character.layers[gender] || [];
+    var loaded = 0;
+    var settled = 0;
+    var decided = false;
+    var timer = null;
+
+    function decide(ok) {
+      if (decided) return;
+      decided = true;
+      if (timer) clearTimeout(timer);
+      if (ok) {
+        C.state.mode = 'layered';
+        root.classList.remove('xl-character-empty');
+        U.emit('mode', 'layered');
+        startLayerBlink();
+      } else if (typeof onFallback === 'function') {
+        onFallback();
+      }
+    }
+
+    function check() {
+      if (decided) return;
+      if (loaded >= 5) return decide(true);
+      if (settled >= shown.length) return decide(false);
+    }
+
+    var hiddenLayers = C.character.layerHidden || [];
+    var shown = list.filter(function (n) { return hiddenLayers.indexOf(n) === -1; });
+
+    shown.forEach(function (name) {
+      var el = new Image();
+      el.className = 'xl-layer xl-layer-' + name;
+      el.draggable = false;
+      el.alt = C.name;
+      if (name === '04_iris') { el.className += ' xl-layer-iris'; layerIris = el; }
+      if (name === '05_blush') { el.className += ' xl-layer-blush'; layerBlush = el; }
+      el.onload = function () { loaded++; settled++; check(); };
+      el.onerror = function () { el.style.display = 'none'; settled++; check(); };
+      el.src = layerPath(name);
+      stage.appendChild(el);
+      layerEls.push(el);
+    });
+
+    timer = setTimeout(function () {
+      if (loaded >= 5) decide(true);
+      else decide(false);
+    }, 8000);
+  }
+
   /* ================= 性别 ================= */
 
   Ch.setGender = function (next, silent) {
@@ -183,7 +307,9 @@
     gender = next;
     U.store.set('gender', gender);
 
-    if (C.character.useLayers) {
+    root.style.width = Math.round(C.character.size * rootAspect()) + 'px';
+
+    if (layeredMode()) {
       mountLayered(function () { mountStatic(); });
     } else {
       mountStatic();

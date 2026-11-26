@@ -118,7 +118,11 @@
 }
 
 .xl-layer-04_iris {
-  transition: transform 0.18s ease-out;
+  transition: transform 0.18s ease-out, opacity 0.12s linear;
+}
+
+.xl-layer-05_blush {
+  transition: filter 0.25s ease;
 }
 
 /* 占位（素材缺失时） */

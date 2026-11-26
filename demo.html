@@ -36,7 +36,7 @@
   <div class="card">
     <h1>小了 SDK 测试页</h1>
     <p>点右下角（或左下角）的小了就能聊天</p>
-    <p class="hint">URL 加 <code>?anchor=left</code> 可切到左边站位，加 <code>?anchor=right</code> 切回右边</p>
+    <p class="hint">URL 加 <code>?anchor=left</code> 可切到左边站位，加 <code>?anchor=right</code> 切回右边；加 <code>?char=layers</code> 可看 8 层合成分身</p>
   </div>
 
   <style>
@@ -47,12 +47,16 @@
   <!-- 接入方式：就这一段。站位用 data-anchor="left|right" 让宿主自己选 -->
   <script>
     (function () {
-      var anchor = (new URLSearchParams(location.search).get('anchor') || 'right').toLowerCase();
+      var q = new URLSearchParams(location.search);
+      var anchor = (q.get('anchor') || 'right').toLowerCase();
+      var char = (q.get('char') || 'frames').toLowerCase();
       var s = document.createElement('script');
       s.src = './sdk/xiaole.js';
       s.setAttribute('data-preset', 'default');
       s.setAttribute('data-size', '210');
       s.setAttribute('data-anchor', anchor === 'left' ? 'left' : 'right');
+      // 画法：默认 frames（表情帧）；?char=layers 看 8 层合成版
+      s.setAttribute('data-char', char === 'layers' ? 'layers' : 'frames');
       document.body.appendChild(s);
     })();
   </script>

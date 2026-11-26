@@ -121,8 +121,15 @@
       blinkDuration: 120,
       // 收到回复 / 发消息时开心一下
       happyDuration: 900,
-      // 是否启用 8 层分层合成。当前素材各层取景比例不一致，合成后会错位，
-      // 因此默认关闭；等拿到同构图、同画布的图层素材后改成 true 即可自动升级。
+      // 角色画法：'frames' 表情帧（美术更精致，默认） / 'layers' 8 层合成（真·多部件）
+      // 宿主也能用 <script data-char="layers"> 临时切过去
+      style: 'frames',
+      // 8 层已按相对坐标烘焙对齐（assets/layers-aligned/<性别>/），画布比例 480×760
+      layersDir: 'assets/layers-aligned',
+      layersCanvas: { w: 480, h: 760 },
+      // 分层里默认不显示的部分（07 大蝴蝶结会挡住脸，想戴就删掉这条）
+      layerHidden: ['07_accessory'],
+      // 是否启用原始 8 层（取景未对齐，需自己配 layerTransform），一般不要开
       useLayers: false,
       layers: {
         girl: ['01_back_hair', '02_body', '03_face_base', '04_iris', '05_blush', '06_front_hair', '07_accessory', '08_happy'],

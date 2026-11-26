@@ -33,6 +33,7 @@
   var apiOverride = script ? script.getAttribute('data-api') : null; // 仅本地联调使用
   var sizeOverride = script ? script.getAttribute('data-size') : null;
   var anchorOverride = script ? script.getAttribute('data-anchor') : null; // left / right
+  var styleOverride = script ? script.getAttribute('data-char') : null;    // frames / layers
 
   /* ================= 依赖加载 ================= */
 
@@ -224,6 +225,11 @@
     var Character = NS.character;
 
     if (zIndex) NS.config.ui.zIndex = parseInt(zIndex, 10) || NS.config.ui.zIndex;
+
+    // 画法：frames 表情帧（默认） / layers 8 层合成
+    if (styleOverride === 'layers' || styleOverride === 'frames') {
+      NS.config.character.style = styleOverride;
+    }
 
     // 站位：right（默认右下） / left（左下）
     var anchor = (anchorOverride || NS.config.character.anchor || 'right').toLowerCase();
