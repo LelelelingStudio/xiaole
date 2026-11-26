@@ -388,6 +388,7 @@
 
     if (opts.instant) {
       content.innerHTML = U.toHtml(displayText(text));
+      if (!opts.local) mountTTS(role, wrap, text); // 本地欢迎语不挂朗读
       return { node: wrap, push: function () {}, finish: function () {} };
     }
 
@@ -433,9 +434,21 @@
           content.innerHTML = U.toHtml(displayText(shown));
           if (revealedTimer) { clearInterval(revealedTimer); revealedTimer = null; }
           scrollBottom();
+          mountTTS(role, wrap, shown);
         }, 400);
       }
     };
+  }
+
+  // AI 回复上的朗读按钮（TTS 不可用或内容为空时自动跳过）
+  function mountTTS(role, wrap, text) {
+    if (role !== 'assistant') return;
+    if (!NS.tts || typeof NS.tts.mount !== 'function') return;
+    if (!String(text || '').trim()) return;
+    if (wrap.getAttribute('data-tts')) return; // 已挂过
+    wrap.setAttribute('data-tts', '1');
+    var body = wrap.querySelector('.xlp-msg-body');
+    NS.tts.mount(body, text);
   }
 
   function addLoading(kind) {
@@ -833,5 +846,7 @@
     refreshConvList();
     syncImgCount();
     scrollBottom();
+    // 语音：先探测 /tts/status，可用才在消息上挂朗读按钮
+    if (NS.tts && NS.tts.init) NS.tts.init();
   };
 })();

@@ -1173,3 +1173,45 @@ body.xl-anchor-left .xl-reset-dot {
 .xl-menu { z-index: 10020; }
 .xl-history { z-index: 10015; }
 .xl-say { z-index: 10005; }
+
+/* ===== 朗读按钮（TTS）：生成中 / 播放中 / 暂停 / 出错 ===== */
+.xl-tts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: #8fa3c9;
+}
+
+.xl-tts-play,
+.xl-tts-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid #dfe8f8;
+  border-radius: 10px;
+  background: #f7faff;
+  color: #6f86ad;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.xl-tts-play:hover,
+.xl-tts-stop:hover { background: #eaf1ff; border-color: #c9dbff; color: #4a6491; }
+
+.xl-tts.is-loading .xl-tts-play { color: #9db2d6; cursor: default; }
+.xl-tts.is-playing .xl-tts-play { background: #e8f1ff; border-color: #c2d7ff; color: #3c5a92; }
+.xl-tts.is-paused .xl-tts-play { background: #fff6e8; border-color: #f5dfb9; color: #a1793b; }
+.xl-tts.is-error .xl-tts-play { background: #fff1f1; border-color: #f6cfcf; color: #b1595a; }
+.xl-tts-stop { min-width: 18px; padding: 0 6px; font-size: 9px; }
+.xl-tts-hint { color: #b1595a; }
+
+.xl-msg .xl-tts { margin-top: 4px; }
+.xl-msg .xl-tts-play,
+.xl-msg .xl-tts-stop { height: 18px; font-size: 10px; }

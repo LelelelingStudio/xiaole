@@ -76,11 +76,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        # 本地联调：/api/ 开头的 GET 也转发到后端（/tts/status 之类需要）
+        if self.path.startswith("/api/"):
+            path = self.path[len("/api"):]
+            ctx = ssl.create_default_context()
+            conn = http.client.HTTPSConnection(BACKEND, timeout=60, context=ctx)
+            conn.request("GET", path, headers={"Origin": ORIGIN})
+            resp = conn.getresponse()
+            body = resp.read()
+            self.send_response(resp.status)
+            self._cors()
+            self.send_header("Content-Type", resp.getheader("Content-Type") or "application/json")
+            self.send_header("Cache-Control", "no-store, max-age=0")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            conn.close()
+            return
         return super().do_GET()
 
 
 class Server(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
+    daemon_threads = True
+    request_queue_size = 128   # 浏览器并发拉 6 个 js，默认队列 5 会丢连接
 
 
 if __name__ == "__main__":

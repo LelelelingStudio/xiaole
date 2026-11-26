@@ -306,6 +306,8 @@ body::before {
   animation: xlp-blink 1s steps(2, start) infinite;
 }
 
+
+
 @keyframes xlp-blink { to { visibility: hidden; } }
 
 .xlp-spinner {

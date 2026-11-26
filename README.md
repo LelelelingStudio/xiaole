@@ -241,6 +241,24 @@ https://xiaole.leleleling.site/index.html
 https://xiaole.leleleling.site/demo.html
 ```
 
-## 11. 版本策略
+## 11. 语音朗读（TTS）
+
+后端统一出口，前端不接触任何供应商密钥。
+
+| 接口 | 说明 |
+| --- | --- |
+| `GET /tts/status` | `{"ok":true,"available":true,"providers":[...]}`，`available` 只代表至少一家配置齐备 |
+| `POST /tts` | body `{"text":"..."}`，成功直接返回 MP3 二进制，响应头 `X-TTS-Provider` 标出本次供应商 |
+
+前端实现（`sdk/xiaole-tts.js`，`sdk/xiaole-config.js` 的 `tts` 块）：
+
+- `TTS.init()` 页面初始化探测 `/tts/status`，失败可重试、不永久关闭；`available:false` 时按钮永不出现。
+- 挂载点：网页版气泡与浮窗气泡的 AI 消息右下角「读」小胶囊，网页版/浮窗都只读正文，欢迎语与本地文案不挂按钮。
+- `TTS.plain()` 去掉 Markdown 标记、跳过 ``` 代码块；超长回复按 `chunkSize`（默认 300 字）按标点切块连续播。
+- Blob URL + 最多 4 条 LRU 缓存，同一条消息重复点击不重新生成；切换/停止时 `revokeObjectURL`。
+- 全局单例：点另一条消息的朗读会先停掉上一条；单块失败只提示「语音暂时不可用」并继续下一块，不影响文字聊天。
+- 三态+停止键：未播放 / 生成中（防重复提交）/ 播放中（可暂停）/ 已暂停（继续）/ 失败。
+
+## 12. 版本策略
 
 宿主只接一次。后续迭代改动范围：文案与提示词改 `config` / `presets`；素材升级直接替换 `assets`；样式与逻辑更新随 `xiaole.js` 自动生效；后端接口变更在 SDK 内部做兼容，不改变对外调用方式。
