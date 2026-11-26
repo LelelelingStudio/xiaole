@@ -83,6 +83,9 @@
   var happyTimer = null;
   var layerIris = null;
   var layerBlush = null;
+  var rigBody = null;
+  var waveImg = null;
+  var waveTimer = null;
 
   function frameSet() {
     var set = (C.character.frames && C.character.frames[gender]) || {};
@@ -273,10 +276,26 @@
     var headWrap = U.el('div', 'xl-rig-head');
     stage.appendChild(headWrap);
 
+    // 长发 / 马尾：单独成层，挂在头部容器里跟着点头，同时自己有摆动
+    var tails = (map.tails && map.tails[gender]) || [];
+    if (tails.length) {
+      tails.forEach(function (name, i) {
+        var t = new Image();
+        t.className = 'xl-rig-tail xl-rig-tail-' + (i % 2 ? 'r' : 'l');
+        t.alt = '';
+        t.draggable = false;
+        t.style.transformOrigin = (map.tailOrigin && map.tailOrigin[name]) || '50% 35%';
+        t.onerror = function () { t.style.display = 'none'; };
+        t.src = rigPath(name);
+        headWrap.appendChild(t);
+      });
+    }
+
+    var coreSuffix = tails.length ? (map.coreSuffix || '_core') : '';
     var set = {
-      idle: map.head || 'head',
-      blink: map.headBlink || 'head_blink',
-      happy: map.headHappy || 'head_happy'
+      idle: (map.head || 'head') + coreSuffix,
+      blink: (map.headBlink || 'head_blink') + coreSuffix,
+      happy: (map.headHappy || 'head_happy') + coreSuffix
     };
     var heads = {};
     var loaded = 0;
@@ -303,9 +322,46 @@
       frameEls[k] = el;
     });
 
+    rigBody = bodyImg;
     currentFrame = 'idle';
     startBlinkLoop();
   }
+
+  /** 挥手：身体层换成抬手臂版，1.2s 后换回来 */
+  Ch.wave = function () {
+    var map = C.character.rig || {};
+    var waveName = map.wave && map.wave[gender];
+    if (!waveName || !rigBody || C.state.mode !== 'rig' || hidden) return false;
+    if (waveTimer) clearTimeout(waveTimer);
+
+    var idleSrc = rigPath(map.body || 'body');
+    var waveSrc = rigPath(waveName);
+    if (waveImg && waveImg.dataset.gender === gender && waveImg.dataset.name === waveName) {
+      applyWave();
+      return true;
+    }
+    waveImg = new Image();
+    waveImg.dataset.gender = gender;
+    waveImg.dataset.name = waveName;
+    waveImg.onload = function () { if (C.state.mode === 'rig') applyWave(); };
+    waveImg.onerror = function () { waveImg = null; };
+    waveImg.src = waveSrc;
+
+    function applyWave() {
+      if (!rigBody) return;
+      rigBody.src = waveSrc;
+      rigBody.style.zIndex = '2.5';
+      root.classList.add('xl-char-wave');
+      waveTimer = setTimeout(function () {
+        if (!rigBody) return;
+        rigBody.src = idleSrc;
+        rigBody.style.zIndex = '';
+        root.classList.remove('xl-char-wave');
+        waveTimer = null;
+      }, map.waveDuration || 1250);
+    }
+    return true;
+  };
 
   /* ================= 分层模式：8 张已对齐的层按同一画布叠起来 ================= */
 

@@ -130,7 +130,19 @@
       // 骨架素材目录与画布比例（assets/rig/<性别>/body.png + head*.png，360×520）
       rigDir: 'assets/rig',
       rigCanvas: { w: 360, h: 520 },
-      rig: { body: 'body', head: 'head', headBlink: 'head_blink', headHappy: 'head_happy' },
+      rig: {
+        body: 'body',
+        head: 'head',
+        headBlink: 'head_blink',
+        headHappy: 'head_happy',
+        // 有马尾/长发时：头部三帧都改读 <name>_core.png，长发单独成层做摆动
+        coreSuffix: '_core',
+        tails: { girl: ['tail_l', 'tail_r'], boy: [] },
+        tailOrigin: { tail_l: '28% 36%', tail_r: '75% 36%' },
+        // 挥手用的身体层（没有就跳过挥手）；挥手时身体会临时盖在长发上面，手势才看得见
+        wave: { girl: 'body_wave', boy: '' },
+        waveDuration: 1250
+      },
       // 8 层已按相对坐标烘焙对齐（assets/layers-aligned/<性别>/），画布比例 480×760
       layersDir: 'assets/layers-aligned',
       layersCanvas: { w: 400, h: 760 },

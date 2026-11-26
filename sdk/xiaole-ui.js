@@ -285,6 +285,10 @@
   UI.open = function () {
     if (NS.character && NS.character.react) NS.character.react('happy');
     if (open) return;
+    // 第一次打开聊天时顺手挥个手（有挥手素材时才会生效）
+    if (NS.character && NS.character.wave && Math.random() < 0.7) {
+      setTimeout(function () { NS.character.wave(); }, 280);
+    }
     open = true;
     bubble.classList.add('xl-open');
     U.sound.play('open');

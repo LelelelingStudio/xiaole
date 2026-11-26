@@ -112,6 +112,7 @@
   height: 100%;
   object-fit: contain;
   pointer-events: none;
+  z-index: 1;
 }
 
 .xl-rig-head {
@@ -130,9 +131,39 @@
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.12s linear;
+  z-index: 3;
 }
 
 .xl-rig-frame.is-on { opacity: 1; }
+
+/* 马尾/长发单独摆动（叠在点头之上） */
+.xl-rig-tail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.xl-rig-tail-l { animation: xl-tail-sway-l 5.2s ease-in-out infinite; }
+.xl-rig-tail-r { animation: xl-tail-sway-r 6.1s ease-in-out infinite; }
+
+/* 挥手时身体层盖到长发上面，手势可见 */
+.xl-character.xl-char-wave .xl-rig-body {
+  transition: opacity 0.2s linear;
+}
+
+@keyframes xl-tail-sway-l {
+  0%, 100% { transform: rotate(-1.6deg) translateX(0.4px); }
+  50% { transform: rotate(1.1deg) translateX(-0.6px); }
+}
+
+@keyframes xl-tail-sway-r {
+  0%, 100% { transform: rotate(1.4deg) translateX(-0.4px); }
+  50% { transform: rotate(-1.2deg) translateX(0.6px); }
+}
 
 @keyframes xl-head-bob {
   0%, 100% { transform: translateY(0) rotate(-0.35deg); }
