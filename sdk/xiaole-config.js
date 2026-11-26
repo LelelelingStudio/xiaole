@@ -121,9 +121,16 @@
       blinkDuration: 120,
       // 收到回复 / 发消息时开心一下
       happyDuration: 900,
-      // 角色画法：'frames' 表情帧（美术更精致，默认） / 'layers' 8 层合成（真·多部件）
-      // 宿主也能用 <script data-char="layers"> 临时切过去
-      style: 'frames',
+      // 角色画法：
+      //   'rig'    身体 + 头分成两层（默认，同一张原画拆出来，头会点头/眨眼/开心）
+      //   'frames' 单张整体图 + 表情帧（老画法，兜底用）
+      //   'layers' 8 层合成（第三方给的原图，比例已经烘焙对齐）
+      // 宿主也能用 <script data-char="rig|frames|layers"> 指定
+      style: 'rig',
+      // 骨架素材目录与画布比例（assets/rig/<性别>/body.png + head*.png，360×520）
+      rigDir: 'assets/rig',
+      rigCanvas: { w: 360, h: 520 },
+      rig: { body: 'body', head: 'head', headBlink: 'head_blink', headHappy: 'head_happy' },
       // 8 层已按相对坐标烘焙对齐（assets/layers-aligned/<性别>/），画布比例 480×760
       layersDir: 'assets/layers-aligned',
       layersCanvas: { w: 400, h: 760 },

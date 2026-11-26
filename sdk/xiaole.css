@@ -104,6 +104,41 @@
   50% { transform: translateY(-3px) scale(1.008); }
 }
 
+/* 骨架模式：身体 + 头两层，头轻微点头 */
+.xl-rig-body {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.xl-rig-head {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 30%;
+  animation: xl-head-bob 4.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.xl-rig-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.12s linear;
+}
+
+.xl-rig-frame.is-on { opacity: 1; }
+
+@keyframes xl-head-bob {
+  0%, 100% { transform: translateY(0) rotate(-0.35deg); }
+  50% { transform: translateY(-1.2px) rotate(0.45deg); }
+}
+
 /* 分层模式图层堆叠 */
 .xl-layer {
   position: absolute;

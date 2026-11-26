@@ -103,6 +103,7 @@ xiaole/
 ├── presets/                 产品专属提示词（read / game / default）
 ├── assets/
 │   ├── static/              girl-static.png / boy-static.png（整体图兜底）
+│   ├── rig/                 骨架素材：body + head(+blink/happy)，360×520（默认画法）
 │   ├── layers/              原始 8 层（512×512，取景不一致）
 │   └── layers-aligned/      已烘焙对齐的 8 层（400×760，分层画法用这份）
 ├── index.html               独立主页（整页对话，无悬浮角色）
@@ -129,7 +130,18 @@ python3 local-proxy.py 8899
 
 ## 6. 角色素材规则
 
-**分层素材**（推荐，放齐自动启用分层动画）：放入 `assets/layers/girl/`、`assets/layers/boy/`，命名固定：
+**骨架素材（默认，推荐）**：`assets/rig/girl|boy/`，四张图，统一 360×520 画布、透明 PNG、底边对齐：
+
+```
+body.png        身体（脖子以下，头部区域全透明）
+head.png        头部（含头发，闭眼/开心两版同画布同位置）
+head_blink.png  闭眼
+head_happy.png  开心
+```
+
+头部层可以从整图抠：`head = 原图 alpha − 身体 alpha`（身体层用 `image_edit` 把原画头部去掉、补全衣领就行），这样头身严格同比例，不会出现「头是特写、身是全身」的两套取景问题。
+
+**分层素材**（第三方给的 8 层，需先烘焙对齐）：放入 `assets/layers/girl/`、`assets/layers/boy/`，命名固定：
 
 ```
 01_back_hair.png  02_body.png  03_face_base.png  04_iris.png
@@ -176,7 +188,8 @@ http://127.0.0.1:8899/index.html?api=http://127.0.0.1:8899/api
 - 域名通过后额外做一次 `/chat` OPTIONS 预检，跨域被拦时控制台告警，不会等用户发消息才失败
 - 聊天框内置生图面板（`画` 按钮）：次数提示、生成中状态、结果图 + 保存链接
 - 站位可配置：`data-anchor="left"` 左下角 / 默认右下角，聊天框与右键菜单一起镜像
-- **角色多部件合成**：柔光 + 地面阴影 + 立绘舞台 + 表情帧（idle / blink / happy）；平时随机眨眼，发消息或收到回复时开心一下，全部由 `config.character.frames` 驱动
+- **角色多部件合成（默认 rig 画法）**：身体层 `body.png` + 头部层 `head.png`（另带 `head_blink` / `head_happy` 两版），加柔光、地面阴影、整体呼吸、头部轻微点头；平时随机眨眼，发消息或收到回复时开心一下，全部由 `config.character.rig` 驱动。头和身体是从同一张原画拆出来的，所以比例天然一致：先用 `image_edit` 把原图头部去掉补全衣领得到身体层，再用「原图 alpha 减去身体 alpha」抠出含双马尾的头部层，两张等比同画布（360×520）叠上去即可
+- 老画法仍可选：`?char=frames` 单图+表情帧、`?char=layers` 8 层合成
 - **8 层合成画法（可选）**：`00` 那 8 张原始层是「头肩特写 + 全身无头」两套取景，直接叠会变成大头。已按相对坐标离线烘焙成 `assets/layers-aligned/{girl,boy}/`（统一 400×760 画布）：头部 7 层缩放 `k=0.44` 并平移到同一中心，身体 `02_body` 放大 `S=1.12`（女）/ `1.10`（男）后下移对齐，下巴压进衣领 `24px/22px`。切 `style:'layers'` 或宿主加 `data-char="layers"`、预览 `?char=layers` 即用；分层模式下眨眼=眼珠层压扁淡出，开心=整只上弹 + 腮红提饱和
 - 切会话/删会话时若正在回答：自动中断，并把已输出的半截回答带「（已中断）」留在原会话，不会串到新会话
 - 站点自带 `404.html`（云朵 + 「小」形象 + 回首页/演示页/产品入口）

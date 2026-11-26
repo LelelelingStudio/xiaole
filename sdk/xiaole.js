@@ -227,7 +227,7 @@
     if (zIndex) NS.config.ui.zIndex = parseInt(zIndex, 10) || NS.config.ui.zIndex;
 
     // 画法：frames 表情帧（默认） / layers 8 层合成
-    if (styleOverride === 'layers' || styleOverride === 'frames') {
+    if (styleOverride === 'layers' || styleOverride === 'frames' || styleOverride === 'rig') {
       NS.config.character.style = styleOverride;
     }
 

@@ -54,10 +54,18 @@
   /* ================= 立绘模式：阴影 + 主图 + 表情帧 + 柔光 ================= */
 
   function layeredMode() {
-    return C.character.style === 'layers' || C.character.useLayers;
+    return C.character.style === 'layers';
+  }
+
+  function rigMode() {
+    return C.character.style !== 'layers' && C.character.style !== 'frames';
   }
 
   function rootAspect() {
+    if (rigMode()) {
+      var rc = C.character.rigCanvas || { w: 360, h: 520 };
+      return rc.w / rc.h;
+    }
     if (!layeredMode()) return 1;
     var cv = C.character.layersCanvas || { w: 480, h: 760 };
     return cv.w / cv.h;
@@ -230,6 +238,75 @@
     }, C.character.happyDuration || 900);
   };
 
+  /* ================= 骨架模式：身体 + 头（含闭眼/开心两版）+ 头轻微点头 ================= */
+
+  function rigPath(name) {
+    var dir = (C.character.rigDir || 'assets/rig').replace(/\/$/, '');
+    return assetUrl(dir + '/' + gender + '/' + name + '.png');
+  }
+
+  function mountRig(onFallback) {
+    root.innerHTML = '';
+    layerEls = [];
+    frameEls = {};
+
+    root.appendChild(U.el('span', 'xl-char-glow'));
+    root.appendChild(U.el('span', 'xl-char-shadow'));
+    var stage = U.el('div', 'xl-char-stage');
+    root.appendChild(stage);
+
+    var map = C.character.rig || {};
+    var bodyImg = new Image();
+    bodyImg.className = 'xl-rig-body';
+    bodyImg.alt = C.name;
+    bodyImg.draggable = false;
+    var bodyOk = false;
+    bodyImg.onload = function () {
+      bodyOk = true;
+      C.state.mode = 'rig';
+      U.emit('mode', 'rig');
+    };
+    bodyImg.onerror = function () { if (typeof onFallback === 'function') onFallback(); };
+    bodyImg.src = rigPath(map.body || 'body');
+    stage.appendChild(bodyImg);
+
+    var headWrap = U.el('div', 'xl-rig-head');
+    stage.appendChild(headWrap);
+
+    var set = {
+      idle: map.head || 'head',
+      blink: map.headBlink || 'head_blink',
+      happy: map.headHappy || 'head_happy'
+    };
+    var heads = {};
+    var loaded = 0;
+    Object.keys(set).forEach(function (k) {
+      var el = new Image();
+      el.className = 'xl-rig-frame' + (k === 'idle' ? ' is-on' : '');
+      el.alt = C.name;
+      el.draggable = false;
+      el.dataset.frame = k;
+      el.onload = function () {
+        loaded++;
+        if (k === 'idle' && bodyOk) {
+          C.state.mode = 'rig';
+          startBlinkLoop();
+        }
+      };
+      el.onerror = function () {
+        if (k !== 'idle') { el.style.display = 'none'; delete frameEls[k]; }
+        else { el.style.display = 'none'; }
+      };
+      el.src = rigPath(set[k]);
+      headWrap.appendChild(el);
+      heads[k] = el;
+      frameEls[k] = el;
+    });
+
+    currentFrame = 'idle';
+    startBlinkLoop();
+  }
+
   /* ================= 分层模式：8 张已对齐的层按同一画布叠起来 ================= */
 
   function layerPath(name) {
@@ -310,7 +387,9 @@
     root.style.width = Math.round(C.character.size * rootAspect()) + 'px';
 
     if (layeredMode()) {
-      mountLayered(function () { mountStatic(); });
+      mountLayered(function () { mountRig(function () { mountStatic(); }); });
+    } else if (rigMode()) {
+      mountRig(function () { mountStatic(); });
     } else {
       mountStatic();
     }
