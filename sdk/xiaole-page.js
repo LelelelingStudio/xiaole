@@ -239,6 +239,7 @@
     syncTitle(conv);
     renderConv(conv);
     refreshConvList();
+    refreshSuggest();
   }
 
   function startNewConv() {
@@ -479,6 +480,7 @@
     var sendConvId = U.convs.currentId();
     U.convs.append({ role: 'user', content: text, type: 'text' }, sendConvId);
     refreshConvList();
+    refreshSuggest();
 
     var loading = addLoading('chat');
     var assistant = null;
