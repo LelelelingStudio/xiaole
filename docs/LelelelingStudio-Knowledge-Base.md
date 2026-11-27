@@ -150,12 +150,12 @@ AI 注意：不要再把了了了AI 当成需要维护的独立产品，也不�
 
 #### 7.3 技术规范
 
-- 模块：`xiaole.js`（入口/加载/白名单/对外 API）、`xiaole-config.js`、`xiaole-utils.js`、`xiaole-chat.js`、`xiaole-character.js`、`xiaole-image.js`、`xiaole-perceive.js`、`xiaole-ui.js`（浮窗）、`xiaole-page.js`（整页版）、`xiaole.css` / `xiaole-page.css`。
+- 模块：`xiaole.js`（入口/加载/白名单/对外 API）、`xiaole-config.js`、`xiaole-utils.js`、`xiaole-chat.js`、`xiaole-character.js`、`xiaole-image.js`、`xiaole-perceive.js`、`xiaole-kb.js`（产品档案按需注入）、`xiaole-tools.js`（动作申请与授权）、`xiaole-ui.js`（浮窗）、`xiaole-page.js`（整页版）、`xiaole.css` / `xiaole-page.css`。
 - 接口：`POST /chat`（SSE，`messages` + `preset` + `fingerprint`）、`POST /image`、`GET /domains.js`（白名单）、`GET /tts/status`、`POST /tts`（后端保留，前端未接入）。
 - 上下文上限：**100K 字符**；超限时本次请求被拦下、输入框锁定、提示"前往网页版继续或开新对话"，**不会自动搬运上下文**。
 - 存储（localStorage 前缀 `lelele-xiaole-`）：`conversations-v1`、`chat-history-<preset>`、`image-count`、`image-date`、`fingerprint`、`gender` 等；图片缓存 IndexedDB `xiaole-images/imgs`。
-- 对外 API：`Xiaole.openChat()` / `closeChat()` / `toggleChat()` / `newChat()` / `clearChat()` / `setGender('boy'|'girl')` / `wave()` / `sayNow(text)` / `generateImage({prompt})` / `tts`（**已移除**）。
-- 事件（`xiaole:` 前缀）：`ready`、`open`、`close`、`show`、`hide`、`toggle-chat`、`message`、`gender`、`mode`、`image`、`context-full`、`new-session`、`conv`（create/switch/remove/update/rename）。
+- 对外 API：`Xiaole.openChat()` / `closeChat()` / `toggleChat()` / `newChat()` / `clearChat()` / `setGender('boy'|'girl')` / `wave()` / `sayNow(text)` / `generateImage({prompt})`；`Xiaole.kb{host,hostId,doc,hostPrompt,context,prefetch}`；`Xiaole.tools.register(id,{label,desc,run})` / `tools.list()`；`tts`（**已移除**）。
+- 事件（`xiaole:` 前缀）：`ready`、`open`、`close`、`show`、`hide`、`toggle-chat`、`message`、`gender`、`mode`、`image`、`context-full`、`new-session`、`tool`（`{id,ok,msg}`）、`conv`（create/switch/remove/update/rename）。
 
 #### 7.4 页面感知与指引用
 
