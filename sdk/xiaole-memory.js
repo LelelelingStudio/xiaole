@@ -96,6 +96,34 @@
 
   /* ================= 面板 ================= */
 
+  function bytes(n) {
+    if (!n && n !== 0) return '';
+    var u = ['B', 'KB', 'MB', 'GB'];
+    var i = 0;
+    while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+    return (Math.round(n * 10) / 10) + ' ' + u[i];
+  }
+
+  function storageInfo() {
+    var box = { support: false, persisted: false, quota: 0, usage: 0 };
+    if (!navigator.storage) return Promise.resolve(box);
+    box.support = true;
+    var p1 = navigator.storage.persisted ? navigator.storage.persisted().then(function (v) { box.persisted = !!v; }) : Promise.resolve();
+    var p2 = navigator.storage.estimate ? navigator.storage.estimate().then(function (e) {
+      box.quota = (e && e.quota) || 0;
+      box.usage = (e && e.usage) || 0;
+    }) : Promise.resolve();
+    return Promise.all([p1, p2]).then(function () { return box; });
+  }
+
+  Memory.requestPersist = function () {
+    if (!navigator.storage || !navigator.storage.persist) return Promise.resolve(false);
+    return navigator.storage.persist().then(function (ok) {
+      U.emit('storage', { persisted: !!ok });
+      return !!ok;
+    });
+  };
+
   Memory.panel = function () {
     var old = document.getElementById('xl-mem-panel');
     if (old) { old.parentNode.removeChild(old); return; }
@@ -106,9 +134,16 @@
 
     function render() {
       var list = load();
+      var allowed = (NS.tools && NS.tools.alwaysAllowed) ? NS.tools.alwaysAllowed() : {};
+      var ids = Object.keys(allowed);
+      var labelOf = {};
+      if (NS.tools && NS.tools.list) {
+        NS.tools.list().forEach(function (t) { labelOf[t.id] = t.label; });
+      }
+
       box.innerHTML =
         '<div class="xl-mem-head">她记住的事<span class="xl-mem-close">×</span></div>' +
-        '<div class="xl-mem-sub">全部只存这台浏览器的本地存储，不上传。更换浏览器、清理站点数据或换设备后，这些记忆会一起丢失。</div>' +
+        '<div class="xl-mem-sub">全部只存这台浏览器的本地存储，不上传。更换浏览器、清理站点数据或换设备后，这些内容会一起丢失。</div>' +
         '<div class="xl-mem-list">' + (list.length
           ? list.map(function (m) {
             return '<div class="xl-mem-item" data-id="' + m.id + '">' +
@@ -117,7 +152,42 @@
           }).join('')
           : '<div class="xl-mem-empty">还没有记住什么。聊的时候可以让她记住你的习惯。</div>') +
         '</div>' +
-        (list.length ? '<div class="xl-mem-foot"><button class="xl-mem-clear">全部清空</button></div>' : '');
+        (list.length ? '<div class="xl-mem-foot"><button class="xl-mem-clear">清空记忆</button></div>' : '') +
+
+        '<div class="xl-mem-sec">你允许过的动作</div>' +
+        '<div class="xl-allow-list">' + (ids.length
+          ? ids.map(function (id) {
+            return '<div class="xl-allow-item" data-id="' + id + '">' +
+              '<span>' + U.escape(labelOf[id] || id) + '</span>' +
+              '<b class="xl-allow-undo">撤销</b></div>';
+          }).join('')
+          : '<div class="xl-mem-empty">还没有「总是允许」的动作。</div>') +
+        '</div>' +
+
+        '<div class="xl-mem-sec">存储空间</div>' +
+        '<div class="xl-store">' +
+        '<div class="xl-store-line" id="xl-store-info">正在读取…</div>' +
+        '<button class="xl-store-btn" id="xl-store-persist">申请持久存储</button>' +
+        '<div class="xl-store-hint">持久存储能让浏览器更不容易自动清理这些数据，但手动清站点数据、换浏览器或换设备仍然会丢失。</div>' +
+        '</div>';
+
+      storageInfo().then(function (st) {
+        var el = box.querySelector('#xl-store-info');
+        if (!el) return;
+        if (!st.support) {
+          el.textContent = '当前浏览器不支持查询存储空间。';
+          var b = box.querySelector('#xl-store-persist');
+          if (b) b.style.display = 'none';
+          return;
+        }
+        el.textContent = '已用 ' + bytes(st.usage) + (st.quota ? ' / 可用 ' + bytes(st.quota) : '') +
+          '，' + (st.persisted ? '已开启持久存储。' : '未开启持久存储。');
+        var btn = box.querySelector('#xl-store-persist');
+        if (btn && st.persisted) {
+          btn.disabled = true;
+          btn.textContent = '已开启';
+        }
+      });
     }
 
     render();
@@ -129,19 +199,44 @@
         mask.parentNode.removeChild(mask);
         return;
       }
+
       var del = e.target.closest && e.target.closest('.xl-mem-del');
       if (del) {
-        var item = del.closest('.xl-mem-item');
-        Memory.remove(item.getAttribute('data-id'));
+        Memory.remove(del.closest('.xl-mem-item').getAttribute('data-id'));
         render();
         return;
       }
+
+      var undo = e.target.closest && e.target.closest('.xl-allow-undo');
+      if (undo) {
+        var id = undo.closest('.xl-allow-item').getAttribute('data-id');
+        if (NS.tools && NS.tools.forgetAlways) NS.tools.forgetAlways(id);
+        render();
+        return;
+      }
+
       if (e.target.closest && e.target.closest('.xl-mem-clear')) {
         Memory.clear();
         render();
+        return;
+      }
+
+      if (e.target.closest && e.target.closest('#xl-store-persist')) {
+        var b = e.target.closest('#xl-store-persist');
+        b.disabled = true;
+        b.textContent = '申请中…';
+        Memory.requestPersist().then(function (ok) {
+          render();
+          var el = box.querySelector('#xl-store-info');
+          if (el) UI_tip(ok ? '已获得持久存储。' : '浏览器没有授予持久存储，数据仍可能被自动清理。');
+        });
       }
     });
 
     return mask;
   };
+
+  function UI_tip(t) {
+    if (NS.ui && NS.ui.showTip) NS.ui.showTip(t);
+  }
 })();
