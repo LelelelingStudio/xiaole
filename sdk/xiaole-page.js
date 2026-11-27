@@ -904,18 +904,28 @@
       .catch(function () { return ''; })
       .then(function (prompt) {
         if (!NS.kb) return prompt;
-        NS.kb.host(product);
-        NS.kb.init();
-        return NS.kb.hostPrompt(prompt);
+        try {
+          NS.kb.host(product);
+          NS.kb.init();
+        } catch (e) {}
+        return NS.kb.hostPrompt(prompt).catch(function () { return prompt; });
       });
   }
 
-  Page.init = function () {
-    resolvePrompt().then(function (productPrompt) {
+  function applyPrompt() {
+    return resolvePrompt().then(function (productPrompt) {
       Chat.setProductPrompt(productPrompt);
       if (Chat.rebuildSystem) Chat.rebuildSystem();
-      start();
-    }, function () { start(); });
+      return productPrompt;
+    }, function () { return ''; });
+  }
+
+  Page.init = function () {
+    applyPrompt().then(start, start);
+    // 知识库首屏偶发取不到（CDN 冷启动/抖动）时补一次，避免整轮没档案
+    setTimeout(function () {
+      if (!(Chat.session.productPrompt || '').trim()) applyPrompt();
+    }, 1200);
   };
 
   function start() {

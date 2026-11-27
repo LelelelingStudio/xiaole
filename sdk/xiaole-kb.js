@@ -59,7 +59,8 @@
 
   function loadIndex() {
     if (indexCache) return Promise.resolve(indexCache);
-    return fetchJSON(dir() + 'index.json').then(function (d) {
+    // 带时间戳，避免浏览器/CDN 继续用旧索引（曾导致域名映射失效、整轮没档案）
+    return fetchJSON(dir() + 'index.json?t=' + Date.now()).then(function (d) {
       indexCache = (d && d.products) || [];
       indexCache.domains = (d && d.domains) || {};
       return indexCache;
