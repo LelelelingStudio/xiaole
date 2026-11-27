@@ -257,6 +257,12 @@ https://xiaole.leleleling.site/demo.html
 - 视觉：目标外呼吸光圈 + 从角色到目标的虚线 + 首个目标旁「就是这里」；滚动/缩放实时重算，元素消失自动撤掉。
 - 指不到时模型按要求改用反问，不画任何高亮。示例宿主页：`demo-host.html`。
 
-## 13. 版本策略
+## 13. 工作室知识库
+
+- `docs/LelelelingStudio-Knowledge-Base.md`：完整知识库（12 个在营产品 + 1 个历史入口；每个产品按「定位 / 场景 / 功能 / 技术与限制」分层；小了单列技术规范与开发注意）。所有数字标注为当前实现值。
+- `presets/studio.json`：625 字的工作室背景预设，宿主机用 `<script ... data-preset="studio">` 即可使用。
+- 预设目录跟随脚本站点，本地联调会读本仓库 `presets/`，线上读 `https://xiaole.leleleling.site/presets/`。
+
+## 14. 版本策略
 
 宿主只接一次。后续迭代改动范围：文案与提示词改 `config` / `presets`；素材升级直接替换 `assets`；样式与逻辑更新随 `xiaole.js` 自动生效；后端接口变更在 SDK 内部做兼容，不改变对外调用方式。

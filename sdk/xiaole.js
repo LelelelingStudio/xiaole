@@ -298,6 +298,8 @@
       .then(function () {
         // 资源根路径跟随脚本所在站点：线上 = xiaole.leleleling.site，本地调试 = 当前服务
         NS.config.baseUrl = baseUrl;
+        // 预设跟随脚本所在站点，本地联调也能读本仓库的 presets/
+        NS.config.presetsBase = baseUrl.replace(/\/$/, '') + '/presets/';
         // 后端地址覆盖：data-api（宿主调试）或页面 URL 上的 ?xl_api=（本地联调）
         var urlApi = '';
         try {
