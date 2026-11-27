@@ -169,7 +169,24 @@
         '<div class="xl-store-line" id="xl-store-info">正在读取…</div>' +
         '<button class="xl-store-btn" id="xl-store-persist">申请持久存储</button>' +
         '<div class="xl-store-hint">持久存储能让浏览器更不容易自动清理这些数据，但手动清站点数据、换浏览器或换设备仍然会丢失。</div>' +
+        '</div>' +
+
+        '<div class="xl-mem-sec">备份</div>' +
+        '<div class="xl-store">' +
+        '<div class="xl-store-line" id="xl-backup-info">正在统计…</div>' +
+        '<div class="xl-backup-row">' +
+        '<button class="xl-store-btn" id="xl-backup-export">导出备份</button>' +
+        '<button class="xl-store-btn xl-store-ghost" id="xl-backup-import">导入备份</button>' +
+        '<input type="file" accept="application/json,.json" id="xl-backup-file" style="display:none" />' +
+        '</div>' +
+        '<div class="xl-store-hint">导出的 JSON 含全部对话、记忆、允许记录和设置，不含生图缓存。换浏览器或换设备时导入它就能恢复。</div>' +
         '</div>';
+
+      var bInfo = box.querySelector('#xl-backup-info');
+      if (bInfo && NS.backup) {
+        var sm = NS.backup.summary();
+        bInfo.textContent = '共 ' + sm.count + ' 项，约 ' + Math.max(1, Math.round(sm.bytes / 1024)) + ' KB 文本。';
+      }
 
       storageInfo().then(function (st) {
         var el = box.querySelector('#xl-store-info');
@@ -193,6 +210,20 @@
     render();
     mask.appendChild(box);
     document.body.appendChild(mask);
+
+    // 用事件委托：render() 会重建面板，直接绑在 input 上会失效
+    mask.addEventListener('change', function (e) {
+      if (!e.target || e.target.id !== 'xl-backup-file') return;
+      var f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f || !NS.backup) return;
+      NS.backup.import(f).then(function (n) {
+        render();
+        UI_tip('已导入 ' + n + ' 项，刷新页面后生效。');
+      }).catch(function (err) {
+        UI_tip((err && err.message) || '导入失败');
+      });
+    });
 
     mask.addEventListener('click', function (e) {
       if (e.target === mask || (e.target.className || '').indexOf('xl-mem-close') >= 0) {
@@ -218,6 +249,20 @@
       if (e.target.closest && e.target.closest('.xl-mem-clear')) {
         Memory.clear();
         render();
+        return;
+      }
+
+      if (e.target.closest && e.target.closest('#xl-backup-export')) {
+        if (NS.backup) {
+          NS.backup.export();
+          UI_tip('备份已开始下载。');
+        }
+        return;
+      }
+
+      if (e.target.closest && e.target.closest('#xl-backup-import')) {
+        var fi = box.querySelector('#xl-backup-file');
+        if (fi) fi.click();
         return;
       }
 

@@ -1461,3 +1461,9 @@ body.xl-anchor-left .xl-reset-dot {
 }
 .xl-store-btn:disabled { background: rgba(120,120,130,.15); color: var(--xl-muted, #8b8b93); cursor: default; }
 .xl-store-hint { font-size: 11.5px; color: var(--xl-muted, #8b8b93); line-height: 1.6; }
+
+.xl-backup-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.xl-store-btn.xl-store-ghost {
+  background: rgba(120,120,130,.12);
+  color: var(--xl-text, #444);
+}

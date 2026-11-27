@@ -49,6 +49,7 @@
     'xiaole-kb.js',
     'xiaole-tools.js',
     'xiaole-memory.js',
+    'xiaole-backup.js',
     'xiaole-ui.js'
   ];
 
