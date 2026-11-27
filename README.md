@@ -324,6 +324,7 @@ https://xiaole.leleleling.site/demo.html
 
 - **导出备份**：把 `lelele-xiaole-*` 全部键打成一个 `xiaole-backup-YYYYMMDD-HHMM.json` 下载。含全部对话、记忆、允许记录、性别、生图计数等文本数据；**不含 IndexedDB 里的生图缓存**（图片可重新生成，且体积大）。
 - **导入备份**：选同一个 JSON，覆盖同名键，提示“刷新页面后生效”。校验 `app === 'lelele-xiaole'`，不是本应用导出的文件会拒绝。
+- 浮窗右键菜单里也有「导出备份」，不用进面板，点一下直接下载。
 - API：`Xiaole.backup.summary()` / `export()` / `import(file)` / `clearAll()`；事件 `xiaole:backup` → `{action:'export'|'import'|'clear', count}`。
 
 这是换浏览器、换设备时唯一能保住数据的办法，比持久存储可靠。

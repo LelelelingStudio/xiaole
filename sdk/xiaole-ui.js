@@ -184,7 +184,8 @@
       '<div class="xl-menu-item" data-action="gender">' + C.text.menuGender + '</div>' +
       '<div class="xl-menu-item" data-action="new-chat">' + C.text.menuNewChat + '</div>' +
       '<div class="xl-menu-item" data-action="history">' + C.text.menuHistory + '</div>' +
-      '<div class="xl-menu-item" data-action="memory">记忆<span class="xl-menu-state" id="xl-mem-count"></span></div>' +
+      '<div class="xl-menu-item" data-action="memory">记忆与备份<span class="xl-menu-state" id="xl-mem-count"></span></div>' +
+      '<div class="xl-menu-item" data-action="backup">导出备份<span class="xl-menu-state" id="xl-backup-state"></span></div>' +
       '<div class="xl-menu-item" data-action="sound">' + C.text.menuSound +
       '<span class="xl-menu-state" id="xl-sound-state"></span></div>' +
       '<div class="xl-menu-item" data-action="hide">' + C.text.menuHide + '</div>';
@@ -196,6 +197,16 @@
       if (mi && mi.getAttribute('data-action') === 'memory' && NS.memory) {
         UI.closeMenu();
         NS.memory.panel();
+        return;
+      }
+      if (mi && mi.getAttribute('data-action') === 'backup') {
+        UI.closeMenu();
+        if (NS.backup) {
+          NS.backup.export();
+          UI.showTip('备份已开始下载');
+        } else {
+          UI.showTip('备份模块没加载');
+        }
         return;
       }
       e.stopPropagation(); // 别让 document 的“点空白关闭”把刚打开的面板关掉
