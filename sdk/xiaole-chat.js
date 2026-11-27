@@ -32,6 +32,11 @@
   function buildSystemPrompt() {
     var base = C.basePrompt || '';
     var product = Chat.session.productPrompt;
+    var mem = '';
+    if (NS.memory && NS.memory.prompt) {
+      try { mem = NS.memory.prompt() || ''; } catch (e) { mem = ''; }
+    }
+    if (mem) base += '\n\n' + mem;
     if (product) return base + '\n\n【当前产品说明】\n' + product;
     return base;
   }
@@ -211,13 +216,37 @@
 
     var url = C.apiBase + C.chat.endpoint;
     var reqMessages = buildRequestMessages();
+    // 带图（截图/选区）：把最后一条用户消息改成多段内容
+    if (handlers.images && handlers.images.length) {
+      for (var ii = reqMessages.length - 1; ii >= 0; ii--) {
+        if (reqMessages[ii].role === 'user') {
+          var txt = reqMessages[ii].content;
+          var parts = [{ type: 'text', text: txt }];
+          handlers.images.slice(0, 2).forEach(function (url) {
+            parts.push({ type: 'image_url', image_url: { url: url } });
+          });
+          reqMessages[ii] = { role: 'user', content: parts };
+          break;
+        }
+      }
+    }
+
     // 页面感知上下文只随本次请求走，不写进对话历史（历史里保持干净的用户原话）
     if (handlers.context) {
       for (var i = reqMessages.length - 1; i >= 0; i--) {
-        if (reqMessages[i].role === 'user') {
-          reqMessages[i] = { role: 'user', content: reqMessages[i].content + '\n\n' + handlers.context };
-          break;
+        if (reqMessages[i].role !== 'user') continue;
+        var msg = reqMessages[i];
+        if (Array.isArray(msg.content)) {
+          for (var k = 0; k < msg.content.length; k++) {
+            if (msg.content[k].type === 'text') {
+              msg.content[k] = { type: 'text', text: msg.content[k].text + '\n\n' + handlers.context };
+              break;
+            }
+          }
+        } else {
+          reqMessages[i] = { role: 'user', content: msg.content + '\n\n' + handlers.context };
         }
+        break;
       }
     }
 

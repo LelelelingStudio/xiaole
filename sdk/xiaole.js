@@ -48,6 +48,7 @@
     'xiaole-perceive.js',
     'xiaole-kb.js',
     'xiaole-tools.js',
+    'xiaole-memory.js',
     'xiaole-ui.js'
   ];
 

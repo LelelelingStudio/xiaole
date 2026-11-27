@@ -18,6 +18,8 @@
   var sendBtn = null;
   var newChatBtn = null;
   var menuEl = null;
+  var attachEl = null;
+  var pendingImgs = [];
   var dotEl = null;
   var tipEl = null;
   var imagePanel = null;
@@ -43,11 +45,13 @@
     buildResetDot();
     bindGlobal();
     bindListClick();
+    bindAttach();
     U.convs.migrate('chat-history-' + (C.state.preset || 'default'), '历史对话');
     U.imgStore.gc();
     UI.restoreConv();
     syncImageCount();
     UI.startIdleTalk();
+    UI.localNotice();
     return Promise.resolve();
   };
 
@@ -71,6 +75,8 @@
 
     var footer = U.el('div', 'xl-cloud-footer');
     footer.innerHTML =
+      '<button class="xl-icon-btn xl-attach-btn" id="xl-attach-btn" title="发截图给我看">＋图</button>' +
+      '<input type="file" accept="image/*" id="xl-attach-file" style="display:none" />' +
       '<button class="xl-icon-btn xl-image-toggle" id="xl-image-toggle" title="生成图片">画</button>' +
       '<input class="xl-input" id="xl-input" type="text" autocomplete="off" placeholder="' +
       C.text.placeholder + '" />' +
@@ -95,8 +101,12 @@
     suggestEl.id = 'xl-suggest';
     buildSuggestions();
 
+    attachEl = U.el('div', 'xl-attach');
+    attachEl.id = 'xl-attach';
+
     bubble.appendChild(header);
     bubble.appendChild(listEl);
+    bubble.appendChild(attachEl);
     bubble.appendChild(tipEl);
     bubble.appendChild(suggestEl);
     bubble.appendChild(imagePanel);
@@ -174,6 +184,7 @@
       '<div class="xl-menu-item" data-action="gender">' + C.text.menuGender + '</div>' +
       '<div class="xl-menu-item" data-action="new-chat">' + C.text.menuNewChat + '</div>' +
       '<div class="xl-menu-item" data-action="history">' + C.text.menuHistory + '</div>' +
+      '<div class="xl-menu-item" data-action="memory">记忆<span class="xl-menu-state" id="xl-mem-count"></span></div>' +
       '<div class="xl-menu-item" data-action="sound">' + C.text.menuSound +
       '<span class="xl-menu-state" id="xl-sound-state"></span></div>' +
       '<div class="xl-menu-item" data-action="hide">' + C.text.menuHide + '</div>';
@@ -181,6 +192,12 @@
     document.body.appendChild(menuEl);
 
     menuEl.addEventListener('click', function (e) {
+      var mi = e.target.closest && e.target.closest('.xl-menu-item');
+      if (mi && mi.getAttribute('data-action') === 'memory' && NS.memory) {
+        UI.closeMenu();
+        NS.memory.panel();
+        return;
+      }
       e.stopPropagation(); // 别让 document 的“点空白关闭”把刚打开的面板关掉
       var item = e.target.closest('.xl-menu-item');
       if (!item) return;
@@ -553,6 +570,8 @@
       .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
       .replace(/\[\[point[:：]?[^\]]*$/i, '')
       .replace(/\[\[kb[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[mem[:：]?[^\]]*$/i, '')
+      .replace(/\[\[mem[:：][^\]]*\]\]/gi, '')
       .replace(/\[\[call[:：]?[^\]]*$/i, '')
       .replace(/\[\[call[:：][^\]]*\]\]/gi, '')
       .replace(/\[\[kb[:：]?[^\]]*$/i, '')
@@ -661,6 +680,16 @@
   }
 
   /* ================= 提示条 ================= */
+
+  // 首次使用提示一次：数据只在本地
+  UI.localNotice = function () {
+    try {
+      if (localStorage.getItem('lelele-xiaole-local-notice')) return;
+      localStorage.setItem('lelele-xiaole-local-notice', '1');
+      var t = C.text.localNotice;
+      if (t) UI.showTip(t, true);
+    } catch (e) {}
+  };
 
   UI.showTip = function (text, sticky) {
     if (!tipEl) return;
@@ -853,14 +882,66 @@
       });
   }
 
+  /* ================= 图片附件（截图提问） ================= */
+
+  function renderAttach() {
+    if (!attachEl) return;
+    attachEl.innerHTML = pendingImgs.map(function (src, i) {
+      return '<div class="xl-attach-item"><img src="' + src + '" alt="" />' +
+        '<b class="xl-attach-del" data-i="' + i + '">×</b></div>';
+    }).join('');
+    attachEl.style.display = pendingImgs.length ? '' : 'none';
+  }
+
+  function addImage(file) {
+    if (pendingImgs.length >= 2) { UI.showTip('一次最多两张图'); return; }
+    U.imageToDataUrl(file, 1024).then(function (url) {
+      pendingImgs.push(url);
+      renderAttach();
+    }).catch(function () { UI.showTip('这张图读不出来'); });
+  }
+
+  function takePasted(e) {
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image/') === 0) {
+        var f = items[i].getAsFile();
+        if (f) { addImage(f); e.preventDefault(); }
+        return;
+      }
+    }
+  }
+
+  function bindAttach() {
+    var btn = document.getElementById('xl-attach-btn');
+    var file = document.getElementById('xl-attach-file');
+    if (btn) btn.addEventListener('click', function () { file.click(); });
+    if (file) file.addEventListener('change', function () {
+      if (file.files && file.files[0]) addImage(file.files[0]);
+      file.value = '';
+    });
+    if (attachEl) attachEl.addEventListener('click', function (e) {
+      var d = e.target.closest && e.target.closest('.xl-attach-del');
+      if (!d) return;
+      pendingImgs.splice(Number(d.getAttribute('data-i')), 1);
+      renderAttach();
+    });
+    if (bubble) bubble.addEventListener('paste', takePasted);
+    renderAttach();
+  }
+
   /* ================= 发送 ================= */
 
   function submit() {
     if (Chat.session.busy) return;
     var text = (inputEl.value || '').trim();
-    if (!text) return;
+    if (!text && !pendingImgs.length) return;
+    var imgs = pendingImgs.slice(0, 2);
+    if (!text) text = '看看这张图';
 
     inputEl.value = '';
+    pendingImgs = [];
+    renderAttach();
     if (NS.character && NS.character.react) NS.character.react('happy');
     addMessage('user', text, { instant: true });
     var sendConvId = U.convs.currentId();
@@ -881,6 +962,7 @@
     if (kbCtx) ctxParts.push(kbCtx);
     Chat.send(text, {
       context: ctxParts.join('\n\n'),
+      images: imgs,
       onReasoning: function (piece) {
         if (loading && loading.parentNode) { loading.parentNode.removeChild(loading); loading = null; }
         if (!assistant) assistant = addMessage('assistant', '', {});
@@ -912,11 +994,34 @@
         if (NS.kb) NS.kb.prefetch(kbs.ids);
         var calls = NS.tools ? NS.tools.parse(draw.text) : { text: draw.text, calls: [] };
         draw.text = calls.text;
+        var mem = NS.memory ? NS.memory.parse(draw.text) : { text: draw.text, saved: [] };
+        draw.text = mem.text;
+        if (mem.saved.length) {
+          if (Chat.rebuildSystem) Chat.rebuildSystem();
+          UI.showTip('已记住：' + mem.saved.join('；'));
+          U.emit('memory', { saved: mem.saved });
+        }
         if (NS.perceive) NS.perceive.draw(point.ids);
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         if (NS.character && NS.character.react) NS.character.react('happy');
         UI.autoTitle(sendConvId, text, draw.text);
         if (draw.prompts.length) submitImage(draw.prompts[0], { quiet: true });
+        var srcIds = (kbs.ids || []).concat(NS.kb && NS.kb.lastExtra ? NS.kb.lastExtra() : []);
+        if (srcIds.length && NS.kb && assistant) {
+          var srcList = NS.kb.sourcesFor(srcIds);
+          if (srcList.length) {
+            var srcBox = U.el('div', 'xl-src');
+            srcList.forEach(function (x) {
+              var a = U.el('a', 'xl-src-item', U.escape(x.name) + ' ↗');
+              a.href = x.site || '#';
+              a.target = '_blank';
+              a.rel = 'noopener';
+              srcBox.appendChild(a);
+            });
+            assistant.wrap.querySelector('.xl-msg-body').appendChild(srcBox);
+          }
+        }
+
         if (calls.calls.length && NS.tools) {
           if (!assistant) assistant = addMessage('assistant', '', {});
           var host = assistant.wrap.querySelector('.xl-msg-body');

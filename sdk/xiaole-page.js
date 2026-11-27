@@ -41,7 +41,7 @@
       '<button class="xlp-side-new" id="xlp-new">+ 新建</button>' +
       '</div>' +
       '<div class="xlp-conv-list" id="xlp-conv-list"></div>' +
-      '<div class="xlp-side-foot">🔒 对话只存在本地浏览器<br>最多保留 50 个对话</div>' +
+      '<div class="xlp-side-foot">🔒 对话与记忆只存在本地浏览器，不上传<br>换浏览器 / 清理站点数据 / 换设备会丢失</div>' +
       '</aside>' +
 
       '<div class="xlp-main">' +
@@ -55,6 +55,7 @@
       '</div>' +
       '</div>' +
       '<div class="xlp-actions">' +
+      '<button class="xlp-btn" id="xlp-mem-top">记忆</button>' +
       '<button class="xlp-btn" id="xlp-new-top">开启新对话</button>' +
       '</div>' +
       '</header>' +
@@ -69,7 +70,10 @@
       '</div>' +
       '</div>' +
       '<div class="xlp-suggest" id="xlp-suggest"></div>' +
+      '<div class="xlp-attach" id="xlp-attach"></div>' +
       '<div class="xlp-input-row">' +
+      '<button class="xlp-icon" id="xlp-attach-btn" title="发截图给我看">＋图</button>' +
+      '<input type="file" accept="image/*" id="xlp-attach-file" style="display:none" />' +
       '<button class="xlp-icon" id="xlp-img-toggle" title="生成图片">画</button>' +
       '<textarea class="xlp-input" id="xlp-input" rows="1" placeholder="' + C.text.placeholder + '"></textarea>' +
       '<button class="xlp-send" id="xlp-send">' + C.text.send + '</button>' +
@@ -149,6 +153,10 @@
 
     document.getElementById('xlp-new').addEventListener('click', startNewConv);
     document.getElementById('xlp-new-top').addEventListener('click', startNewConv);
+    document.getElementById('xlp-mem-top').addEventListener('click', function () {
+      if (NS.memory) NS.memory.panel();
+    });
+
     document.getElementById('xlp-menu').addEventListener('click', function () {
       app.classList.toggle('side-open');
     });
@@ -333,6 +341,8 @@
       .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
       .replace(/\[\[point[:：]?[^\]]*$/i, '')
       .replace(/\[\[kb[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[mem[:：]?[^\]]*$/i, '')
+      .replace(/\[\[mem[:：][^\]]*\]\]/gi, '')
       .replace(/\[\[call[:：]?[^\]]*$/i, '')
       .replace(/\[\[call[:：][^\]]*\]\]/gi, '')
       .replace(/\[\[kb[:：]?[^\]]*$/i, '');
@@ -568,13 +578,64 @@
 
   /* ================= 发送对话 ================= */
 
+  var pendingImgs = [];
+  var attachEl = null;
+
+  function renderAttach() {
+    if (!attachEl) return;
+    attachEl.innerHTML = pendingImgs.map(function (src, i) {
+      return '<div class="xlp-attach-item"><img src="' + src + '" alt="" /><b class="xlp-attach-del" data-i="' + i + '">×</b></div>';
+    }).join('');
+    attachEl.style.display = pendingImgs.length ? '' : 'none';
+  }
+
+  function addImage(file) {
+    if (pendingImgs.length >= 2) { tip('一次最多两张图'); return; }
+    U.imageToDataUrl(file, 1024).then(function (url) {
+      pendingImgs.push(url);
+      renderAttach();
+    }).catch(function () { tip('这张图读不出来'); });
+  }
+
+  function bindAttach() {
+    attachEl = document.getElementById('xlp-attach');
+    var btn = document.getElementById('xlp-attach-btn');
+    var file = document.getElementById('xlp-attach-file');
+    if (btn) btn.addEventListener('click', function () { file.click(); });
+    if (file) file.addEventListener('change', function () {
+      if (file.files && file.files[0]) addImage(file.files[0]);
+      file.value = '';
+    });
+    if (attachEl) attachEl.addEventListener('click', function (e) {
+      var d = e.target.closest && e.target.closest('.xlp-attach-del');
+      if (!d) return;
+      pendingImgs.splice(Number(d.getAttribute('data-i')), 1);
+      renderAttach();
+    });
+    document.addEventListener('paste', function (e) {
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf('image/') === 0) {
+          var f = items[i].getAsFile();
+          if (f) { addImage(f); e.preventDefault(); }
+          return;
+        }
+      }
+    });
+    renderAttach();
+  }
+
   function submit() {
     if (Chat.session.busy) return;
     var text = (inputEl.value || '').trim();
-    if (!text) return;
+    if (!text && !pendingImgs.length) return;
+    var imgs = pendingImgs.slice(0, 2);
+    if (!text) text = '看看这张图';
 
     inputEl.value = '';
     inputEl.style.height = 'auto';
+    pendingImgs = [];
+    renderAttach();
     addMessage('user', text, { instant: true });
     if (NS.character && NS.character.react) NS.character.react('happy');
     // 绑定发起会话，回答回来时不会串台
@@ -597,6 +658,7 @@
     if (kbCtx) ctxParts.push(kbCtx);
     Chat.send(text, {
       context: ctxParts.join('\n\n'),
+      images: imgs,
       onReasoning: function (piece) {
         if (U.convs.currentId() !== sendConvId) return;
         if (loading) { removeNode(loading); loading = null; }
@@ -633,6 +695,13 @@
         // 动作申请：剥掉标记，在气泡里挂"是否允许"的卡
         var calls = NS.tools ? NS.tools.parse(draw.text) : { text: draw.text, calls: [] };
         draw.text = calls.text;
+        var mem = NS.memory ? NS.memory.parse(draw.text) : { text: draw.text, saved: [] };
+        draw.text = mem.text;
+        if (mem.saved.length) {
+          if (Chat.rebuildSystem) Chat.rebuildSystem();
+          tip('已记住：' + mem.saved.join('；'));
+          U.emit('memory', { saved: mem.saved });
+        }
         if (NS.perceive && U.convs.currentId() === sendConvId) NS.perceive.draw(point.ids);
         // 只存干净文本，别把 [[draw:...]] / [[point:...]] 指令写进历史；写回发起它的会话
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
@@ -643,6 +712,22 @@
         // 模型自己发起的生图：扣额度、直接出图（仍记在发起的会话里）
         if (draw.prompts.length) {
           generateOnDemand(draw.prompts[0], true, sendConvId);
+        }
+
+        var srcIds = (kbs.ids || []).concat(NS.kb && NS.kb.lastExtra ? NS.kb.lastExtra() : []);
+        if (srcIds.length && NS.kb && assistant) {
+          var srcList = NS.kb.sourcesFor(srcIds);
+          if (srcList.length) {
+            var srcBox = U.el('div', 'xl-src');
+            srcList.forEach(function (x) {
+              var a = U.el('a', 'xl-src-item', U.escape(x.name) + ' ↗');
+              a.href = x.site || '#';
+              a.target = '_blank';
+              a.rel = 'noopener';
+              srcBox.appendChild(a);
+            });
+            assistant.node.querySelector('.xlp-msg-body').appendChild(srcBox);
+          }
         }
 
         if (calls.calls.length && NS.tools && U.convs.currentId() === sendConvId) {
@@ -932,6 +1017,7 @@
     build();
     bind();
     bindListEvents();
+    bindAttach();
 
     // 旧版单会话记录迁移进多对话，避免升级后历史"消失"
     U.convs.migrate('chat-history-' + (C.state.preset || 'default'), '历史对话');
@@ -947,5 +1033,13 @@
     refreshConvList();
     syncImgCount();
     scrollBottom();
+
+    // 首次使用提示一次：数据只在本地
+    try {
+      if (!localStorage.getItem('lelele-xiaole-local-notice')) {
+        localStorage.setItem('lelele-xiaole-local-notice', '1');
+        tip(C.text.localNotice);
+      }
+    } catch (e) {}
   }
 })();

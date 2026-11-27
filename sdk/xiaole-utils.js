@@ -91,6 +91,44 @@
     return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   };
 
+  /* ---------------- 图片（用于截图提问） ---------------- */
+
+  /**
+   * 把用户选的图片压成 dataURL：长边最多 maxSide，JPEG 82%
+   * 微信/QQ 截图动辄 2MB，不压会撑爆请求
+   */
+  U.imageToDataUrl = function (file, maxSide) {
+    maxSide = maxSide || 1024;
+    return new Promise(function (resolve, reject) {
+      if (!file || !/^image\//.test(file.type || '')) {
+        reject(new Error('不是图片'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('读取失败')); };
+      reader.onload = function () {
+        var img = new Image();
+        img.onerror = function () { reject(new Error('解码失败')); };
+        img.onload = function () {
+          var w = img.width, h = img.height;
+          var scale = Math.min(1, maxSide / Math.max(w, h));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          try {
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+          } catch (e) { reject(e); }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   /* ---------------- HTML ---------------- */
 
   U.escape = function (str) {

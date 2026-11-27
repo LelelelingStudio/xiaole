@@ -15,6 +15,18 @@
   var C = NS.config;
 
   var registry = {};   // id -> { id, label, desc, run, danger }
+  var ALLOW_KEY = 'lelele-xiaole-tool-allow';
+
+  // 「总是允许」过的动作，下次直接执行
+  function alwaysAllowed() {
+    try { return JSON.parse(localStorage.getItem(ALLOW_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function allowAlways(id) {
+    var m = alwaysAllowed();
+    m[id] = true;
+    try { localStorage.setItem(ALLOW_KEY, JSON.stringify(m)); } catch (e) {}
+  }
+
 
   function cfg() {
     return (C && C.tools) || {};
@@ -23,6 +35,13 @@
   /* ================= 注册 ================= */
 
   var Tools = NS.tools = {};
+
+  Tools.alwaysAllowed = alwaysAllowed;
+  Tools.forgetAlways = function (id) {
+    var m = alwaysAllowed();
+    delete m[id];
+    try { localStorage.setItem(ALLOW_KEY, JSON.stringify(m)); } catch (e) {}
+  };
 
   Tools.register = function (id, def) {
     id = String(id || '').trim().toLowerCase();
@@ -92,6 +111,14 @@
   Tools.card = function (host, call) {
     if (!host || !call) return null;
     var t = registry[call.id];
+
+    // 之前点过「总是允许」→ 直接执行，不再打扰
+    if (t && alwaysAllowed()[call.id]) {
+      Tools.exec(call).then(function (r) {
+        U.emit('tool', { id: call.id, ok: r.ok, msg: r.msg, auto: true });
+      });
+      return null;
+    }
     var box = document.createElement('div');
     box.className = 'xl-call';
 
@@ -113,12 +140,19 @@
     ok.className = 'xl-call-ok';
     ok.textContent = '允许';
 
+    var all = document.createElement('button');
+    all.type = 'button';
+    all.className = 'xl-call-no';
+    all.textContent = '总是允许';
+    all.title = '以后这个动作不再询问，可在浏览器站点数据里清除';
+
     var no = document.createElement('button');
     no.type = 'button';
     no.className = 'xl-call-no';
     no.textContent = '忽略';
 
     row.appendChild(ok);
+    row.appendChild(all);
     row.appendChild(no);
     box.appendChild(row);
 
@@ -132,6 +166,13 @@
       tipLine.className = 'xl-call-tip ' + (cls || '');
       box.classList.add('is-done');
     }
+
+    all.addEventListener('click', function () {
+      if (!t) { done('这个动作没有开放，无法执行。', 'bad'); return; }
+      allowAlways(call.id);
+      done('已允许，以后这个动作不会再问你。', 'good');
+      U.emit('tool', { id: call.id, ok: true, remembered: true });
+    });
 
     no.addEventListener('click', function () {
       done('已忽略，什么都没执行。', 'muted');
@@ -164,6 +205,49 @@
       if (!NS.character || !NS.character.wave) return '角色还没准备好';
       NS.character.wave();
       return '挥手完成';
+    }
+  });
+
+  // 打开链接：只允许站内/工作室域名，避免被诱导跳外站
+  Tools.register('open', {
+    label: '打开页面',
+    desc: '在新标签打开一个工作室页面，不会提交任何表单。',
+    run: function (args) {
+      var url = String((args && args.url) || '');
+      if (!/^https:\/\//i.test(url)) return '地址必须以 https:// 开头';
+      var host = '';
+      try { host = new URL(url).hostname; } catch (e) { return '地址不合法'; }
+      var okHost = /\.leleleling\.site$/i.test(host) || host === 'leleleling.site' || host === location.hostname;
+      if (!okHost) return '只能打开了了了岭工作室的页面：' + host;
+      window.open(url, '_blank', 'noopener');
+      return '已在新标签打开';
+    }
+  });
+
+  // 复制一段文本到剪贴板
+  Tools.register('copy', {
+    label: '复制文本',
+    desc: '把这段文字放进你的剪贴板。',
+    run: function (args) {
+      var text = String((args && (args.text || args.value)) || '').slice(0, 2000);
+      if (!text) return '没有要复制的内容';
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(function () { return '已复制'; });
+      }
+      return '当前浏览器不支持自动复制';
+    }
+  });
+
+  // 切换角色形象
+  Tools.register('gender', {
+    label: '切换角色',
+    desc: '把地标上的小了换成另一个形象。',
+    run: function (args) {
+      var v = String((args && args.value) || '').toLowerCase();
+      if (v !== 'boy' && v !== 'girl') return '只能选 boy 或 girl';
+      if (!NS.setGender) return '角色还没准备好';
+      NS.setGender(v);
+      return '已切换';
     }
   });
 

@@ -20,6 +20,7 @@
   var pending = {};      // id -> Promise
   var indexCache = null; // [{id,name,site,aliases}]
   var hostId = '';       // 当前站点自己的产品 id
+  var lastExtra = [];    // 上一轮实际补进来的其他产品 id
   var prefetched = [];   // 模型申请的、待下一轮注入的 id
 
   function cfg() {
@@ -161,6 +162,8 @@
    * 1) 用户提到别的产品 → 自动补；
    * 2) 上一轮模型用 [[kb:id]] 申请的 → 这次补上。
    */
+  KB.lastExtra = function () { return lastExtra.slice(); };
+
   KB.context = function (text) {
     var want = match(text);
     var extra = prefetched.slice();
@@ -173,13 +176,14 @@
       if (ids.length >= (cfg().maxExtra || 2)) return;
       ids.push(id);
     });
+    lastExtra = ids.slice();
     if (!ids.length) return Promise.resolve('');
 
     return Promise.all(ids.map(function (id) { return load(id); })).then(function (docs) {
       var parts = docs.filter(Boolean).map(trimDoc);
       if (!parts.length) return '';
       return '【其他产品档案（按用户提问临时调取）】\n' + parts.join('\n\n') +
-        '\n（这些档案只用于本轮回答，不要向用户说明资料来源。）';
+        '\n（这些档案只用于本轮回答。）';
     });
   };
 
@@ -195,6 +199,20 @@
   };
 
   /** 预热：启动时把索引拉下来，后面匹配不用等 */
+  /** 取一批 id 的出处信息（用于回复底部的来源标签） */
+  KB.sourcesFor = function (ids) {
+    var out = [];
+    (ids || []).forEach(function (id) {
+      for (var i = 0; i < (indexCache || []).length; i++) {
+        if (indexCache[i].id === id) {
+          out.push({ id: id, name: indexCache[i].name || id, site: indexCache[i].site || '' });
+          return;
+        }
+      }
+    });
+    return out;
+  };
+
   KB.init = function () {
     return loadIndex();
   };
