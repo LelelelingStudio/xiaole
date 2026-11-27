@@ -884,7 +884,41 @@
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
   }
 
+  // 当前站点用哪个预设/产品：?preset= 与 ?product= 优先，其次读本模块的 data-*，再退回 config
+  function resolvePrompt() {
+    var qs = {};
+    try { qs = new URLSearchParams(location.search); } catch (e) {}
+    var script = document.querySelector('script[src*="xiaole-page"]');
+    var preset = (qs.get && qs.get('preset')) || (script && script.getAttribute('data-preset')) || C.state.preset || 'default';
+    var product = (qs.get && qs.get('product')) || (script && script.getAttribute('data-product')) || preset;
+    C.state.preset = preset;
+
+    // 预设文件目录跟随脚本站点，本地联调也能读到仓库里的 presets/
+    var base = C.presetsBase;
+    if (script && script.src) {
+      base = script.src.replace(/sdk\/[^/]*$/, 'presets/');
+    }
+    return fetch(base + preset + '.json')
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (d) { return String((d && d.prompt) || ''); })
+      .catch(function () { return ''; })
+      .then(function (prompt) {
+        if (!NS.kb) return prompt;
+        NS.kb.host(product);
+        NS.kb.init();
+        return NS.kb.hostPrompt(prompt);
+      });
+  }
+
   Page.init = function () {
+    resolvePrompt().then(function (productPrompt) {
+      Chat.setProductPrompt(productPrompt);
+      if (Chat.rebuildSystem) Chat.rebuildSystem();
+      start();
+    }, function () { start(); });
+  };
+
+  function start() {
     build();
     bind();
     bindListEvents();
@@ -903,5 +937,5 @@
     refreshConvList();
     syncImgCount();
     scrollBottom();
-  };
+  }
 })();
