@@ -34,6 +34,7 @@
   var sizeOverride = script ? script.getAttribute('data-size') : null;
   var anchorOverride = script ? script.getAttribute('data-anchor') : null; // left / right
   var styleOverride = script ? script.getAttribute('data-char') : null;    // frames / layers
+  var perceiveOverride = script ? script.getAttribute('data-xiaole-perceive') : null; // summary / text / off
 
   /* ================= 依赖加载 ================= */
 
@@ -43,6 +44,7 @@
     'xiaole-chat.js',
     'xiaole-character.js',
     'xiaole-image.js',
+    'xiaole-perceive.js',
     'xiaole-ui.js'
   ];
 
@@ -225,6 +227,11 @@
     var Character = NS.character;
 
     if (zIndex) NS.config.ui.zIndex = parseInt(zIndex, 10) || NS.config.ui.zIndex;
+
+    // 页面感知：宿主可用 data-xiaole-perceive="summary|text|off" 覆盖，默认 summary
+    if (perceiveOverride === 'text' || perceiveOverride === 'summary' || perceiveOverride === 'off') {
+      NS.config.perceive.mode = perceiveOverride;
+    }
 
     // 画法：frames 表情帧（默认） / layers 8 层合成
     if (styleOverride === 'layers' || styleOverride === 'frames' || styleOverride === 'rig') {

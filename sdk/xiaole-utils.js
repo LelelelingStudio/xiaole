@@ -368,6 +368,17 @@
   };
 
   /** 取出正文里的 [[draw:描述]] 生图指令，并从展示文本中移除 */
+  // 抽出[[point:e3]]指引标记（用户看不见），返回干净文本 + 元素序号列表
+  U.extractPoint = function (text) {
+    var ids = [];
+    var clean = String(text || '').replace(/\[\[point[:：]\s*([eE]\d{1,3})\s*\]\]/g, function (_, id) {
+      var v = id.toLowerCase();
+      if (ids.indexOf(v) < 0) ids.push(v);
+      return '';
+    }).replace(/\[\[point[:：]?[^\]]*$/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+    return { text: clean, ids: ids };
+  };
+
   U.extractDraw = function (text) {
     var prompts = [];
     var clean = String(text || '').replace(/\[\[draw[:：]([^\]]{1,1200})\]\]/gi, function (_, p) {

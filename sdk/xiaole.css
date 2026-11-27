@@ -1173,3 +1173,54 @@ body.xl-anchor-left .xl-reset-dot {
 .xl-menu { z-index: 10020; }
 .xl-history { z-index: 10015; }
 .xl-say { z-index: 10005; }
+
+/* ===== 指引用：目标高亮（覆盖层永远不吃点击）===== */
+.xl-point-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10000;
+  overflow: hidden;
+}
+.xl-point-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.xl-point-line {
+  stroke: #6e8fd6;
+  stroke-width: 1.5;
+  stroke-dasharray: 7 7;
+  opacity: .6;
+  animation: xl-point-march 1.2s linear infinite;
+}
+.xl-point-ring {
+  position: absolute;
+  border-radius: 10px;
+  border: 2px solid rgba(110, 143, 214, .92);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 0 16px rgba(110, 143, 214, .5);
+  background: rgba(110, 143, 214, .06);
+  animation: xl-point-pulse 1.5s ease-in-out infinite;
+}
+.xl-point-label {
+  position: absolute;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font: 500 11px/1.4 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #fff;
+  background: rgba(86, 116, 176, .96);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(60, 90, 150, .28);
+}
+@keyframes xl-point-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 0 10px rgba(110,143,214,.4); }
+  50%      { box-shadow: 0 0 0 3px rgba(255,255,255,.95), 0 0 22px rgba(110,143,214,.75); }
+}
+@keyframes xl-point-march {
+  to { stroke-dashoffset: -28; }
+}
+@media (max-width: 480px) {
+  .xl-point-label { font-size: 10px; padding: 2px 7px; }
+}

@@ -510,6 +510,7 @@
   UI.close = function () {
     if (!open) return;
     open = false;
+    if (NS.perceive) NS.perceive.clear();
     bubble.classList.remove('xl-open');
     U.sound.play('close');
     U.emit('close');
@@ -549,6 +550,8 @@
     return String(str || '')
       .replace(/\[\[draw[:：]([^\]]*)\]\]/gi, '')
       .replace(/\[\[draw[:：]?[^\]]*$/i, '')
+      .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[point[:：]?[^\]]*$/i, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
@@ -838,10 +841,13 @@
 
     if (UI.refreshSuggest) UI.refreshSuggest();
 
+    if (NS.perceive) NS.perceive.clear();
+
     var loading = showLoading();
     var assistant = null;
 
     Chat.send(text, {
+      context: NS.perceive ? NS.perceive.context(text) : '',
       onDelta: function (piece, done) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
         loading = null;
@@ -861,6 +867,9 @@
         loading = null;
         if (assistant) assistant.finish();
         var draw = U.extractDraw(full || '');
+        var point = U.extractPoint(draw.text || '');
+        draw.text = point.text;
+        if (NS.perceive) NS.perceive.draw(point.ids);
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         if (NS.character && NS.character.react) NS.character.react('happy');
         UI.autoTitle(sendConvId, text, draw.text);

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>宿主页示例 · 了了了岭小店</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin:0; font:14px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#2b3245; background:#f6f8fc; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 22px; background:#fff; border-bottom:1px solid #e8edf6; position:sticky; top:0; }
+  header h1 { font-size:16px; margin:0; }
+  header .nav { margin-left:auto; display:flex; gap:10px; align-items:center; }
+  header input { width:180px; padding:7px 10px; border:1px solid #dde5f2; border-radius:8px; outline:none; }
+  header button { padding:7px 14px; border:1px solid #dde5f2; background:#fff; border-radius:8px; cursor:pointer; }
+  main { max-width:920px; margin:24px auto 140px; padding:0 20px; }
+  .card { background:#fff; border:1px solid #e8edf6; border-radius:14px; padding:20px; margin-bottom:16px; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .price { color:#d9534f; font-size:22px; font-weight:600; }
+  .muted { color:#7d879c; font-size:12px; }
+  .primary { background:#4c74c9; color:#fff; border-color:#4c74c9; padding:10px 22px; }
+  .ghost { padding:10px 18px; }
+  .coupon { border:1px dashed #f0b429; background:#fffbf0; color:#b07d14; padding:6px 12px; border-radius:8px; }
+  a.link { color:#4c74c9; text-decoration:none; }
+  .list li { margin:6px 0; }
+  .footer-actions { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e8edf6; padding:10px 22px; display:flex; gap:12px; justify-content:flex-end; }
+</style>
+</head>
+<body>
+<header>
+  <h1>了了了岭小店</h1>
+  <input id="q" placeholder="搜索商品，例如：青绿折扇" aria-label="搜索商品">
+  <div class="nav">
+    <button id="login">登录 / 注册</button>
+    <button id="orders">我的订单</button>
+    <a class="link" href="#help">帮助中心</a>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="row">
+      <div>
+        <h2 style="margin:0 0 6px">青绿山水折扇 · 手绘宣纸</h2>
+        <div class="muted">了了了岭工作室出品 ｜ 现货 3 件 ｜ 已售 128</div>
+      </div>
+      <div style="margin-left:auto" class="price">¥ 168</div>
+    </div>
+    <p class="muted">宣纸手绘青绿山水，竹骨八寸，附锦盒。支持七天无理由退货。</p>
+    <div class="row">
+      <button class="coupon" id="coupon">领取 20 元优惠券</button>
+      <button class="ghost" id="fav">收藏</button>
+      <button class="ghost" id="consult">咨询客服</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 style="margin-top:0">规格与配送</h3>
+    <div class="row">
+      <label>颜色</label>
+      <select id="color"><option>青绿</option><option>黛蓝</option><option>赭石</option></select>
+      <label>数量</label>
+      <input id="qty" type="number" value="1" min="1" style="width:80px;padding:6px 8px;border:1px solid #dde5f2;border-radius:8px">
+      <button class="ghost" id="addr">修改收货地址</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 style="margin-top:0">商品详情</h3>
+    <ul class="list">
+      <li>扇面：安徽泾县宣纸，手工裱糊</li>
+      <li>扇骨：湘妃竹，八寸十六方</li>
+      <li>包装：锦盒 + 防潮袋</li>
+    </ul>
+    <button id="detail">展开全部参数</button>
+  </section>
+
+  <section class="card" id="help">
+    <h3 style="margin-top:0">常见问题</h3>
+    <p class="muted">发货时间、退换货、发票开具等问题都可以问我。</p>
+    <button id="faq">查看退货流程</button>
+  </section>
+</main>
+
+<div class="footer-actions">
+  <button class="ghost" id="cart">加入购物车</button>
+  <button class="primary" id="buy">立即购买</button>
+</div>
+
+<script>
+  (function () {
+    var s = document.createElement('script');
+    s.src = './sdk/xiaole.js';
+    s.setAttribute('data-preset', 'read');
+    s.setAttribute('data-anchor', 'right');
+    s.setAttribute('data-char', 'rig');
+    var api = new URLSearchParams(location.search).get('xl_api');
+    if (api) s.setAttribute('data-api', api);
+    var mode = new URLSearchParams(location.search).get('perceive');
+    if (mode) s.setAttribute('data-xiaole-perceive', mode);
+    document.body.appendChild(s);
+  })();
+</script>
+</body>
+</html>

@@ -139,6 +139,21 @@
       listLimit: 50
     },
 
+    // ===== 页面感知与指引用（只读、只指，绝不替用户操作）=====
+    // mode：'summary' 只上送元素序号/短标签/位置（默认，隐私优先）；'text' 额外带页面正文（截断）；
+    //       'off' 完全不看页面。宿主可用 <script data-xiaole-perceive="summary|text|off"> 覆盖。
+    perceive: {
+      mode: 'summary',
+      maxElements: 60,       // 单轮最多上送多少个可交互元素
+      labelChars: 24,        // 每个元素标签截断长度（summary 模式下就是这些短标签）
+      maxChars: 4000,        // text 模式页面正文上限
+      maxPoints: 3,          // 一次最多画几个高亮（越少越好，按模型给的顺序取前几个）
+      pointer: {
+        enabled: true,
+        label: '就是这里'     // 高亮旁的一句话
+      }
+    },
+
     // ===== 角色参数 =====
     character: {
       size: 160,

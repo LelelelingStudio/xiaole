@@ -289,6 +289,7 @@
   /* ================= 打开 / 新建会话 ================= */
 
   function openConv(id) {
+    if (NS.perceive) NS.perceive.clear();
     // 正在回答时切会话：中断当前流，并把已说出的半截回答留在原会话里
     if (Chat.session.busy) {
       var prevId = U.convs.currentId();
@@ -328,7 +329,9 @@
   function displayText(str) {
     return String(str || '')
       .replace(/\[\[draw[:：]([^\]]*)\]\]/gi, '')
-      .replace(/\[\[draw[:：]?[^\]]*$/i, '');
+      .replace(/\[\[draw[:：]?[^\]]*$/i, '')
+      .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[point[:：]?[^\]]*$/i, '');
   }
 
   function scrollBottom() {
@@ -551,10 +554,14 @@
     refreshConvList();
     refreshSuggest();
 
+    if (NS.perceive) NS.perceive.clear();
+
     var loading = addLoading('chat');
     var assistant = null;
 
     Chat.send(text, {
+      context: NS.perceive ? NS.perceive.context(text) : '',
+
       onDelta: function (piece, isDone) {
         if (loading) { removeNode(loading); loading = null; }
         if (U.convs.currentId() !== sendConvId) return; // 已经切走了，不再往当前视图写
@@ -574,7 +581,11 @@
         if (assistant) assistant.finish(full);
 
         var draw = U.extractDraw(full || '');
-        // 只存干净文本，别把 [[draw:...]] 指令写进历史；写回发起它的会话
+        // 指引标记：只用来画高亮，不进正文、不存历史
+        var point = U.extractPoint(draw.text || '');
+        draw.text = point.text;
+        if (NS.perceive && U.convs.currentId() === sendConvId) NS.perceive.draw(point.ids);
+        // 只存干净文本，别把 [[draw:...]] / [[point:...]] 指令写进历史；写回发起它的会话
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         hideTip();
         refreshConvList();

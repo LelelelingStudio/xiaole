@@ -188,8 +188,19 @@
     Chat.session.aborted = false;
 
     var url = C.apiBase + C.chat.endpoint;
+    var reqMessages = buildRequestMessages();
+    // 页面感知上下文只随本次请求走，不写进对话历史（历史里保持干净的用户原话）
+    if (handlers.context) {
+      for (var i = reqMessages.length - 1; i >= 0; i--) {
+        if (reqMessages[i].role === 'user') {
+          reqMessages[i] = { role: 'user', content: reqMessages[i].content + '\n\n' + handlers.context };
+          break;
+        }
+      }
+    }
+
     var body = JSON.stringify({
-      messages: buildRequestMessages(),
+      messages: reqMessages,
       stream: !!C.chat.stream,
       preset: C.state.preset || 'default',
       fingerprint: U.fingerprint()
