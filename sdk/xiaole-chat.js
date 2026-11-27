@@ -47,9 +47,18 @@
     if (!saved || !Array.isArray(saved.messages) || !saved.messages.length) return false;
 
     Chat.session.messages = saved.messages;
-    Chat.session.productPrompt = saved.productPrompt || Chat.session.productPrompt;
+    // 产品说明不跟随旧存档走：配置/知识库随时可能更新，保持当前这次启动拼出来的版本
     Chat.session.startedAt = saved.startedAt || Date.now();
     return true;
+  };
+
+  // 重拼当前 system 消息（知识库/预设更新后，旧对话也要吃到新提示词）
+  Chat.rebuildSystem = function () {
+    Chat.session.systemPrompt = buildSystemPrompt();
+    var m = Chat.session.messages;
+    if (m.length && m[0].role === 'system') m[0].content = Chat.session.systemPrompt;
+    else m.unshift({ role: 'system', content: Chat.session.systemPrompt });
+    Chat.saveHistory();
   };
 
   Chat.saveHistory = function () {

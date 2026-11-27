@@ -1,0 +1,12 @@
+{
+  "id": "bibletree",
+  "name": "BibleTree",
+  "site": "https://bibletree.leleleling.site",
+  "aliases": [
+    "bibletree",
+    "圣经",
+    "人物关系"
+  ],
+  "brief": "BibleTree",
+  "detail": "BibleTree\n\n· 网址：https://bibletree.leleleling.site ｜ 仓库：`LelelelingStudio/bibletree`\n· 定位：圣经人物关系图谱与时间线，帮助理解人物与关系，而非人物列表。\n· 功能：旧约/新约/Both 并排；角色分组（族长/士师/君王/先知/十二使徒/早期教会等）与 Main/All/None 筛选；人物详情（故事、经文出处、关系、同名辨析）；图谱布局（聚类 / 时间顺序），拖动固定、双击释放；Name Lens 同名人物并排比较；时间线含历史事件与估算标记；中英文（中文为覆盖层，未译字段保留英文）。\n· 技术：原生 HTML/CSS/JS + D3.js + 静态 JSON，无需构建。\n· 原则：只依据经文，不猜测补齐；NIV 为人物关系基础、中文引用和合本；争议关系与估算日期必须标注，教会传统不能写成经文原文。"
+}

@@ -90,13 +90,14 @@
   (function () {
     var s = document.createElement('script');
     s.src = './sdk/xiaole.js';
-    var preset = new URLSearchParams(location.search).get('preset') || 'studio';
-    s.setAttribute('data-preset', preset);
+    var params = new URLSearchParams(location.search);
+    s.setAttribute('data-preset', params.get('preset') || 'studio');
+    if (params.get('product')) s.setAttribute('data-product', params.get('product'));
     s.setAttribute('data-anchor', 'right');
     s.setAttribute('data-char', 'rig');
-    var api = new URLSearchParams(location.search).get('xl_api');
+    var api = params.get('xl_api');
     if (api) s.setAttribute('data-api', api);
-    var mode = new URLSearchParams(location.search).get('perceive');
+    var mode = params.get('perceive');
     if (mode) s.setAttribute('data-xiaole-perceive', mode);
     document.body.appendChild(s);
   })();

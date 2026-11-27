@@ -1,0 +1,11 @@
+{
+  "id": "photoedits",
+  "name": "Photoedits",
+  "site": "https://photoedits.leleleling.site",
+  "aliases": [
+    "photoedits",
+    "图像处理 api"
+  ],
+  "brief": "Photoedits",
+  "detail": "Photoedits\n\n· 网址：https://photoedits.leleleling.site ｜ 仓库：`LelelelingStudio/photoedits` ｜ 文档标注 v1.0.0\n· 定位：纯浏览器图像处理 API，面向开发者，不是在线修图网站。\n· 五个引擎：`Photoedits.png`（PNG/APNG，UPNG）、`Photoedits.tiff`（TIFF/EXIF，UTIF）、`Photoedits.zip`（UZIP）、`Photoedits.font`（Typr）、`Photoedits.nn`（UNN）。\n· API：`use(name)` 按需加载、`ready()` 全量、`isLoaded(name)`、`raw`、`utils`（ArrayBuffer/Blob/DataURL/Base64/下载）、`canvas`（读取/缩放/导出 PNG）。\n· 特点：懒加载 + 模块缓存；无后端、不上传、无账号，计算都在本地。\n· 限制：不要把它介绍成\"Photoshop 替代品\"；与 LSFP 分工不同（LSFP 是自研格式与压缩，Photoedits 是引擎统一封装）。"
+}

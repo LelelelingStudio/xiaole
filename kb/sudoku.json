@@ -1,0 +1,11 @@
+{
+  "id": "sudoku",
+  "name": "了了了数独 Lelele Sudoku",
+  "site": "https://sudoku.leleleling.site",
+  "aliases": [
+    "数独",
+    "sudoku"
+  ],
+  "brief": "了了了数独（Lelele Sudoku）",
+  "detail": "了了了数独（Lelele Sudoku）\n\n· 网址：https://sudoku.leleleling.site ｜ 仓库：`LelelelingStudio/sudoku`\n· 定位：纯前端数独，经典 + 多变体，靠逻辑求解与唯一解生成撑起体验。\n· 棋盘：4×4、6×6、9×9、16×16（16×16 用数字+字母）。\n· 变体：Diagonal、Jigsaw、Killer、Thermo、Consecutive、Windoku、Arrow、Samurai。\n· 模式：Classic、Daily Challenge（确定性种子，同一天同题）、Time Attack、Variant Puzzles。\n· 难度：五档，按所需技巧、搜索深度、提示数量、线索密度评估，不只看空格数。\n· 辅助：候选笔记、自动候选、错误检查、撤销/重做、提示、擦除、计时、键盘与手机数字键盘、自动保存续玩。\n· 技术：原生 ES Modules；config/constraints/solver/techniques/difficulty/generator/daily-challenge/game-state/storage/statistics/board/solver-worker/language/sdk 等模块；求解与生成走 Web Worker，失败有页面内兜底。\n· 限制：统计与每日挑战记录都在本机，没有全球每日排行榜，也没有云端存档。\n\n---"
+}

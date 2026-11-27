@@ -35,6 +35,7 @@
   var anchorOverride = script ? script.getAttribute('data-anchor') : null; // left / right
   var styleOverride = script ? script.getAttribute('data-char') : null;    // frames / layers
   var perceiveOverride = script ? script.getAttribute('data-xiaole-perceive') : null; // summary / text / off
+  var productOverride = script ? script.getAttribute('data-product') : null;          // kb 里的产品 id
 
   /* ================= 依赖加载 ================= */
 
@@ -45,6 +46,7 @@
     'xiaole-character.js',
     'xiaole-image.js',
     'xiaole-perceive.js',
+    'xiaole-kb.js',
     'xiaole-ui.js'
   ];
 
@@ -248,15 +250,25 @@
       if (document.body) document.body.classList.remove('xl-anchor-left');
     }
 
+    // 当前站点对应的产品档案：data-product 优先，其次用 preset 同名（read/game…）兜底
+    if (NS.kb) {
+      NS.kb.host(productOverride || preset);
+      NS.kb.init();
+    }
+
     return loadPreset()
+      .then(function (productPrompt) {
+        return NS.kb ? NS.kb.hostPrompt(productPrompt) : productPrompt;
+      })
       .then(function (productPrompt) {
         Chat.setProductPrompt(productPrompt);
 
         // 恢复上次会话，没有则开新会话
         if (!Chat.loadHistory()) {
           Chat.newSession();
-        } else if (!Chat.session.systemPrompt) {
-          Chat.session.systemPrompt = NS.config.basePrompt;
+        } else {
+          // 旧存档里的 system 提示词可能是老版本，按当前预设+知识库重拼一次
+          Chat.rebuildSystem();
         }
 
         return Character.init();

@@ -1,0 +1,13 @@
+{
+  "id": "search",
+  "name": "了了了搜 Lelele Search",
+  "site": "https://search.leleleling.site",
+  "aliases": [
+    "了了了搜",
+    "lelele search",
+    "search",
+    "搜索"
+  ],
+  "brief": "了了了搜（Lelele Search）",
+  "detail": "了了了搜（Lelele Search）\n\n· 网址：https://search.leleleling.site ｜ 仓库：`LelelelingStudio/lelele-search`\n· 定位：一次查询聚合多个搜索来源，并用 AI 摘要与本地词条提速。\n· 场景：不想开多个搜索引擎标签页；想快速拿到关键结论再回原文核对。\n· 功能：聚合搜索（Cloudflare Worker 抓取，去重 + 相关度排序）、结果页 AI 摘要、内置 38+ 精选词条（精确/包含/模糊匹配、独立详情页）、约 983 条每日语录、浅/深色主题记忆、响应式。\n· 技术：原生 HTML/CSS/ES6+，静态 JSON 数据，Worker 做聚合，GitHub Pages + Cloudflare；页面 `index.html` / `search.html` / `leleart.html`。\n· 限制：不固定承诺具体搜索引擎名单；AI 摘要是对结果的整理，需回原文核实；前端出现的 Key 不算秘密，防护要做在 Worker（Origin 白名单、Referer、限流、轮换）。"
+}

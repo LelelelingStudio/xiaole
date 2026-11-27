@@ -1,0 +1,12 @@
+{
+  "id": "lsfp",
+  "name": "LSFP 图片格式",
+  "site": "https://lsfp.leleleling.site",
+  "aliases": [
+    "lsfp",
+    "图片格式",
+    "压缩"
+  ],
+  "brief": "LSFP 图片格式与转换工具",
+  "detail": "LSFP 图片格式与转换工具\n\n· 网址：https://lsfp.leleleling.site ｜ 仓库：`LelelelingStudio/lsfp` ｜ Apache-2.0\n· 定位：自研图片格式（LelelelingStudio's Format Picture），针对纯色面积大、UI 截图、图标、颜色有限的图像。\n· 场景：把截图/图标压得更小；开发者嵌入解码库。\n· 格式：颜色量化（调色板最多 256 色）+ RLE + Gzip；文件含魔数、版本、标志位、宽高、调色板、数据块。\n· 工具：纯前端 PWA 转换器，与 PNG/JPG/WebP/BMP/GIF/SVG/ICO/AVIF/TIFF 互转，支持多文件拖放、批量、后台队列、离线、中英文。\n· 库：`lsfp.js`（浏览器解码，可喂给 Canvas）；`pip install lsfp`（Python 编解码）。\n· 限制：README 提到极限场景可缩到约 90%，不是所有图片的保证；Web Workers / NPM / CLI / 原生查看器仍在路线图。"
+}

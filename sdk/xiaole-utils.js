@@ -368,6 +368,17 @@
   };
 
   /** 取出正文里的 [[draw:描述]] 生图指令，并从展示文本中移除 */
+  // 抽出[[kb:timepin]]知识库申请标记（用户看不见），返回干净文本 + 产品id列表
+  U.extractKb = function (text) {
+    var ids = [];
+    var clean = String(text || '').replace(/\[\[kb[:：]\s*([a-z0-9_-]{2,20})\s*\]\]/gi, function (_, id) {
+      var v = id.toLowerCase();
+      if (ids.indexOf(v) < 0) ids.push(v);
+      return '';
+    }).replace(/\[\[kb[:：]?[^\]]*$/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+    return { text: clean, ids: ids };
+  };
+
   // 抽出[[point:e3]]指引标记（用户看不见），返回干净文本 + 元素序号列表
   U.extractPoint = function (text) {
     var ids = [];

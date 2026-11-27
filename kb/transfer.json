@@ -1,0 +1,12 @@
+{
+  "id": "transfer",
+  "name": "了了了传输助手",
+  "site": "https://transferassistant.leleleling.site",
+  "aliases": [
+    "传输助手",
+    "transfer",
+    "传文件"
+  ],
+  "brief": "了了了传输助手",
+  "detail": "了了了传输助手\n\n· 网址：https://transferassistant.leleleling.site ｜ 仓库：`LelelelingStudio/transferassistant`\n· 定位：免账号、P2P 优先的文件传输 + 聊天工具。\n· 功能：四位设备码（系统分配）、设备名可改、二维码连接、设备查找；多文件传输、约 500KB 分片、暂停/继续、断点续传（从最后确认分片接着传）；私聊/群聊/邀请/群二维码/语音（约 60 秒）；联系人、聊天记录存 localStorage；PWA。\n· 技术：原生前端 + WebRTC DataChannel + PeerJS（公共信令，只做连接协商、不存文件）。\n· 限制：同局域网更易连通，跨网可能失败（无 TURN）；数据都在本机，清缓存会丢，无云同步；不是网盘，也不具备任意设备的原生蓝牙互传。"
+}

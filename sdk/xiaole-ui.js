@@ -552,6 +552,8 @@
       .replace(/\[\[draw[:：]?[^\]]*$/i, '')
       .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
       .replace(/\[\[point[:：]?[^\]]*$/i, '')
+      .replace(/\[\[kb[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[kb[:：]?[^\]]*$/i, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
@@ -846,8 +848,14 @@
     var loading = showLoading();
     var assistant = null;
 
+    var ctxParts = [];
+    var pctx = NS.perceive ? NS.perceive.context(text) : '';
+    if (pctx) ctxParts.push(pctx);
+
+    var go = function (kbCtx) {
+    if (kbCtx) ctxParts.push(kbCtx);
     Chat.send(text, {
-      context: NS.perceive ? NS.perceive.context(text) : '',
+      context: ctxParts.join('\n\n'),
       onDelta: function (piece, done) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
         loading = null;
@@ -869,6 +877,9 @@
         var draw = U.extractDraw(full || '');
         var point = U.extractPoint(draw.text || '');
         draw.text = point.text;
+        var kbs = U.extractKb(draw.text || '');
+        draw.text = kbs.text;
+        if (NS.kb) NS.kb.prefetch(kbs.ids);
         if (NS.perceive) NS.perceive.draw(point.ids);
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         if (NS.character && NS.character.react) NS.character.react('happy');
@@ -882,6 +893,9 @@
         addMessage('assistant', C.text.errorMsg, { instant: true });
       }
     });
+    };
+    if (NS.kb) NS.kb.context(text).then(go, function () { go(''); });
+    else go('');
   }
 
   /* ================= 新对话 ================= */

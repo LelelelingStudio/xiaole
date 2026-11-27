@@ -1,0 +1,14 @@
+{
+  "id": "read",
+  "name": "了了了读 Lelele Read",
+  "site": "https://read.leleleling.site",
+  "aliases": [
+    "了了了读",
+    "lelele read",
+    "read",
+    "阅读",
+    "读书"
+  ],
+  "brief": "了了了读（Lelele Read）",
+  "detail": "了了了读（Lelele Read）\n\n· 网址：https://read.leleleling.site ｜ 仓库：`LelelelingStudio/lelele-read`\n· 定位：纯净、轻量、可自定义的在线阅读平台。\n· 场景：读站内书籍；导入自己的 EPUB；做笔记、书签、批注。\n· 功能：书库按章节 JSON 存储按需加载；统一阅读器 `reader.html`（目录、章节切换、搜索、进度、断点续读、收藏、书签、高亮、批注、字号、字体、多主题、自定义背景、悬浮工具箱）；EPUB 2/3 导入（单文件约 20MB 上限，浏览器本地解析，不上传）；导出 EPUB / TXT / HTML / JSON。\n· 技术：原生 HTML/CSS/JS + JSON 数据 + JSZip + EPUB 双向转换 + PWA，无框架无构建。\n· 限制：阅读记录（进度/书签/高亮/批注/偏好）主要存本地，不做跨设备自动同步；不是文档编辑器，也不是网盘。"
+}

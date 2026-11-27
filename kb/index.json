@@ -1,0 +1,129 @@
+{
+  "products": [
+    {
+      "id": "game",
+      "name": "了了了游 Lelele Game",
+      "site": "https://game.leleleling.site",
+      "aliases": [
+        "了了了游",
+        "lelele game",
+        "game",
+        "游戏平台",
+        "游"
+      ]
+    },
+    {
+      "id": "read",
+      "name": "了了了读 Lelele Read",
+      "site": "https://read.leleleling.site",
+      "aliases": [
+        "了了了读",
+        "lelele read",
+        "read",
+        "阅读",
+        "读书"
+      ]
+    },
+    {
+      "id": "farmer",
+      "name": "Happy Farmer 爱种地的农民",
+      "site": "https://happyfarmer.game.leleleling.site",
+      "aliases": [
+        "happy farmer",
+        "爱种地的农民",
+        "农场",
+        "farmer"
+      ]
+    },
+    {
+      "id": "timepin",
+      "name": "TimePin 时光扣",
+      "site": "https://timepin-tools.leleleling.site",
+      "aliases": [
+        "timepin",
+        "时光扣",
+        "任务管理"
+      ]
+    },
+    {
+      "id": "lsfp",
+      "name": "LSFP 图片格式",
+      "site": "https://lsfp.leleleling.site",
+      "aliases": [
+        "lsfp",
+        "图片格式",
+        "压缩"
+      ]
+    },
+    {
+      "id": "search",
+      "name": "了了了搜 Lelele Search",
+      "site": "https://search.leleleling.site",
+      "aliases": [
+        "了了了搜",
+        "lelele search",
+        "search",
+        "搜索"
+      ]
+    },
+    {
+      "id": "xiaole",
+      "name": "小了 SDK",
+      "site": "https://xiaole.leleleling.site",
+      "aliases": [
+        "小了",
+        "xiaole",
+        "sdk",
+        "助手组件"
+      ]
+    },
+    {
+      "id": "chess",
+      "name": "Lelele Chess 国际象棋",
+      "site": "https://chess.leleleling.site",
+      "aliases": [
+        "chess",
+        "国际象棋",
+        "棋"
+      ]
+    },
+    {
+      "id": "transfer",
+      "name": "了了了传输助手",
+      "site": "https://transferassistant.leleleling.site",
+      "aliases": [
+        "传输助手",
+        "transfer",
+        "传文件"
+      ]
+    },
+    {
+      "id": "bibletree",
+      "name": "BibleTree",
+      "site": "https://bibletree.leleleling.site",
+      "aliases": [
+        "bibletree",
+        "圣经",
+        "人物关系"
+      ]
+    },
+    {
+      "id": "photoedits",
+      "name": "Photoedits",
+      "site": "https://photoedits.leleleling.site",
+      "aliases": [
+        "photoedits",
+        "图像处理 api"
+      ]
+    },
+    {
+      "id": "sudoku",
+      "name": "了了了数独 Lelele Sudoku",
+      "site": "https://sudoku.leleleling.site",
+      "aliases": [
+        "数独",
+        "sudoku"
+      ]
+    }
+  ]
+}

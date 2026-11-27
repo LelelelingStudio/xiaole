@@ -1,0 +1,12 @@
+{
+  "id": "chess",
+  "name": "Lelele Chess 国际象棋",
+  "site": "https://chess.leleleling.site",
+  "aliases": [
+    "chess",
+    "国际象棋",
+    "棋"
+  ],
+  "brief": "Lelele Chess（了了了国际象棋）",
+  "detail": "Lelele Chess（了了了国际象棋）\n\n· 网址：https://chess.leleleling.site ｜ 仓库：`LelelelingStudio/chess`\n· 定位：纯前端国际象棋，支持本地双人、人机、WebRTC 在线双人。\n· 功能：完整规则（易位、吃过路兵、升变、将军、将死、逼和、三次重复、五十回合、子力不足）；AI 三档难度（Web Worker）；SAN 棋谱、撤销/重做、认输/和棋；动画、响应式、中英文；本地设置/统计/棋谱，JSON 导入导出。\n· 在线对局：WebRTC DataChannel + 手动信令交换（主机出房间码与信号 → 客人回执），不自建信令服务器。\n· 限制：无 TURN 中继，部分 NAT 环境连不上；不是教学平台，也没有云端账号与全球匹配。"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "game",
+  "name": "了了了游 Lelele Game",
+  "site": "https://game.leleleling.site",
+  "aliases": [
+    "了了了游",
+    "lelele game",
+    "game",
+    "游戏平台",
+    "游"
+  ],
+  "brief": "了了了游（Lelele Game）",
+  "detail": "了了了游（Lelele Game）\n\n· 网址：https://game.leleleling.site ｜ 仓库：`LelelelingStudio/lelele-game`\n· 定位：HTML5 小游戏平台与分发入口，不是某一款游戏。\n· 场景：打开网页即玩；开发者投稿作品、看数据。\n· 功能：分类/标签筛选、搜索（支持拼音容错）、加权随机与 For You 推荐、继续游玩、收藏关注、排行榜（人工维护）、游戏详情（中英文介绍、截图、视频、作者、年龄评级、更新日志）、模拟浏览器播放器（开始/重载/全屏/关闭）、成绩分享链接（含昵称与分数）、PWA。\n· 开发者：登录开发者后台、管理作品与统计、提交游戏、接收审核与通知、Lv.1–6 认证与 Official/Studio Special 标识；提供游戏 SDK（排行榜、成绩、评分、昵称、分享、相似游戏、详情跳转）。\n· 技术：纯静态 HTML/CSS/JS，无构建、无平台后端，GitHub Pages 发布 + Cloudflare；设计变量统一主题；用户动态内容需转义。\n· 限制：投稿需人工审核；不支持嵌入的外部游戏以新标签页打开。"
+}

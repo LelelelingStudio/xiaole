@@ -260,7 +260,13 @@ https://xiaole.leleleling.site/demo.html
 ## 13. 工作室知识库
 
 - `docs/LelelelingStudio-Knowledge-Base.md`：完整知识库（12 个在营产品 + 1 个历史入口；每个产品按「定位 / 场景 / 功能 / 技术与限制」分层；小了单列技术规范与开发注意）。所有数字标注为当前实现值。
+- `kb/*.json`：按产品拆分的档案（`index.json` + 12 份），供 SDK 按需调取。
 - `presets/studio.json`：625 字的工作室背景预设，宿主机用 `<script ... data-preset="studio">` 即可使用。
+
+注入策略（两层 + 按需）：
+1. **工作室总览永远在**：写死在 `config.basePrompt` 里，每轮都有，与站点无关。
+2. **产品详情默认只给当前站点那一份**：宿主用 `data-product="timepin"` 指定（不写则用 preset 同名兜底），启动时取 `kb/<id>.json` 拼进系统提示词；换预设/改档案后，旧对话也会按 `Chat.rebuildSystem()` 重拼一次。
+3. **AI 可自主要更多**：用户提问里提到别的产品名（别名/站点）→ 自动取对应档案，只随本轮请求发送、不入历史；模型也可以输出 `[[kb:timepin]]` 主动申请，SDK 取回后下一轮注入，标记对用户不可见。
 - 预设目录跟随脚本站点，本地联调会读本仓库 `presets/`，线上读 `https://xiaole.leleleling.site/presets/`。
 
 ## 14. 版本策略

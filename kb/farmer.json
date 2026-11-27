@@ -1,0 +1,13 @@
+{
+  "id": "farmer",
+  "name": "Happy Farmer 爱种地的农民",
+  "site": "https://happyfarmer.game.leleleling.site",
+  "aliases": [
+    "happy farmer",
+    "爱种地的农民",
+    "农场",
+    "farmer"
+  ],
+  "brief": "Happy Farmer（爱种地的农民）",
+  "detail": "Happy Farmer（爱种地的农民）\n\n· 网址：https://happyfarmer.game.leleleling.site ｜ 仓库：`LelelelingStudio/happyfarmer` ｜ 版本 1.1.0 ｜ 年龄 6+\n· 定位：慢节奏农场经营游戏，无强制签到、无体力、无内购。\n· 场景：碎片时间经营农场，逐步扩大生产链。\n· 功能：开垦（含小游戏）→ 种植 → 浇水 → 收获 → 加工 → 销售；约 1000 种作物、10 个作物家族；四季与天气影响生长；随机事件（宝藏/小偷/疾病/旅行商人）；9 级工坊、1893 种配方；5 位商人 + 寄售市场 + 拍卖；100 种分批解锁商店物品、50 款皮肤、150 项成就。\n· 技术：原生 HTML/CSS/JS，按 core/systems/ui/langdata/assets/tools 分层；无需构建、无需后端。\n· 限制：核心游戏离线可玩，本地存档支持导出导入；排行榜可选、需联网且有等级门槛。它是具体游戏，不是游戏平台。"
+}

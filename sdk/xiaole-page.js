@@ -331,7 +331,9 @@
       .replace(/\[\[draw[:：]([^\]]*)\]\]/gi, '')
       .replace(/\[\[draw[:：]?[^\]]*$/i, '')
       .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
-      .replace(/\[\[point[:：]?[^\]]*$/i, '');
+      .replace(/\[\[point[:：]?[^\]]*$/i, '')
+      .replace(/\[\[kb[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[kb[:：]?[^\]]*$/i, '');
   }
 
   function scrollBottom() {
@@ -559,8 +561,15 @@
     var loading = addLoading('chat');
     var assistant = null;
 
+    var ctxParts = [];
+    var pctx = NS.perceive ? NS.perceive.context(text) : '';
+    if (pctx) ctxParts.push(pctx);
+
+    // 知识库补充上下文是异步的（要按需取档案），取完再发
+    var go = function (kbCtx) {
+    if (kbCtx) ctxParts.push(kbCtx);
     Chat.send(text, {
-      context: NS.perceive ? NS.perceive.context(text) : '',
+      context: ctxParts.join('\n\n'),
 
       onDelta: function (piece, isDone) {
         if (loading) { removeNode(loading); loading = null; }
@@ -584,6 +593,10 @@
         // 指引标记：只用来画高亮，不进正文、不存历史
         var point = U.extractPoint(draw.text || '');
         draw.text = point.text;
+        // 模型申请的知识库档案：取回来给下一轮用（用户看不到标记）
+        var kbs = U.extractKb(draw.text || '');
+        draw.text = kbs.text;
+        if (NS.kb) NS.kb.prefetch(kbs.ids);
         if (NS.perceive && U.convs.currentId() === sendConvId) NS.perceive.draw(point.ids);
         // 只存干净文本，别把 [[draw:...]] / [[point:...]] 指令写进历史；写回发起它的会话
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
@@ -603,6 +616,9 @@
         addMessage('assistant', C.text.errorMsg, { instant: true });
       }
     });
+    };
+    if (NS.kb) NS.kb.context(text).then(go, function () { go(''); });
+    else go('');
   }
 
   /* ================= 生图 ================= */
