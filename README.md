@@ -272,3 +272,21 @@ https://xiaole.leleleling.site/demo.html
 ## 14. 版本策略
 
 宿主只接一次。后续迭代改动范围：文案与提示词改 `config` / `presets`；素材升级直接替换 `assets`；样式与逻辑更新随 `xiaole.js` 自动生效；后端接口变更在 SDK 内部做兼容，不改变对外调用方式。
+
+## 动作调用（需要用户点头）
+
+模型可以在回复里申请执行一个动作，**SDK 不会自己跑**，先在气泡里弹一张确认卡，用户点「允许」才执行，点「忽略」就当没发生过。
+
+- 模型输出格式：`[[call:动作id]]`，可带参数 `[[call:point {"element":"e5"}]]`；标记对用户不可见，也不写进历史。
+- 宿主开放能力：`Xiaole.tools.register('id', { label: '标题', desc: '说明', run: fn })`，`run` 可返回字符串作为结果提示。
+- 内置两个：`wave`（挥手）、`point`（在页面上圈出元素，只画不点）。
+- 没注册的 id 会显示"这个动作没有开放"，不会执行；`config.tools.enabled=false` 时全部标记直接剥掉。
+- 事件：`xiaole:tool` → `{ id, ok, msg }`。
+
+## 域名自动认领产品档案
+
+宿主可以不写 `data-product`：`kb/index.json` 里有一张 `domains` 表（域名 → 产品 id），SDK 启动时按 `location.hostname` 自动认领当前站点档案。显式 `data-product` 优先，认不出来就只用工作室总览。
+
+## 思考过程展示
+
+后端返回 `reasoning_content` 时，气泡上方会出现一个可折叠的「思考过程」块，流式期间展开、输出结束自动收起（点标题可再展开）。没有 thinking 内容就完全不显示，不会留空块。

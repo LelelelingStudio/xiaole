@@ -39,13 +39,33 @@
     });
   }
 
+  // 域名 → 产品 id（index.json 的 domains 表；也认子域名）
+  function resolveHost() {
+    var map = (indexCache && indexCache.domains) || {};
+    var host = String(location.hostname || '').toLowerCase();
+    if (map[host]) return map[host];
+    var keys = Object.keys(map);
+    for (var i = 0; i < keys.length; i++) {
+      if (host === keys[i] || host.slice(-keys[i].length - 1) === '.' + keys[i]) return map[keys[i]];
+    }
+    return '';
+  }
+
+  function known(id) {
+    if (!indexCache || !indexCache.length) return false;
+    for (var i = 0; i < indexCache.length; i++) if (indexCache[i].id === id) return true;
+    return false;
+  }
+
   function loadIndex() {
     if (indexCache) return Promise.resolve(indexCache);
     return fetchJSON(dir() + 'index.json').then(function (d) {
       indexCache = (d && d.products) || [];
+      indexCache.domains = (d && d.domains) || {};
       return indexCache;
     }).catch(function () {
       indexCache = [];
+      indexCache.domains = {};
       return indexCache;
     });
   }
@@ -122,12 +142,16 @@
    */
   KB.hostPrompt = function (presetPrompt) {
     var preset = String(presetPrompt || '').trim();
-    if (!hostId) return Promise.resolve(preset);
-    return KB.doc(hostId).then(function (docText) {
-      var parts = [];
+    return loadIndex().then(function () {
+      // 宿主没显式指定，或指定的不是档案里的产品 → 按当前域名自动认领
+      if (!known(hostId)) hostId = resolveHost();
+      if (!hostId) return preset;
+      return KB.doc(hostId).then(function (docText) {
+        var parts = [];
       if (preset) parts.push(preset);
-      if (docText) parts.push('【当前站点产品档案】\n' + docText);
-      return parts.join('\n\n');
+        if (docText) parts.push('【当前站点产品档案】\n' + docText);
+        return parts.join('\n\n');
+      });
     });
   };
 

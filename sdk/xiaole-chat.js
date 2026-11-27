@@ -116,6 +116,19 @@
 
   /* ================= 响应文本抽取（兼容多种后端格式）================= */
 
+  // 思考过程（reasoning_content）：有就展示，没有就什么都不显示
+  function extractReasoning(payload) {
+    if (!payload || typeof payload !== 'object') return '';
+    var c = payload.choices && payload.choices[0];
+    if (c) {
+      if (c.delta && typeof c.delta.reasoning_content === 'string') return c.delta.reasoning_content;
+      if (c.message && typeof c.message.reasoning_content === 'string') return c.message.reasoning_content;
+    }
+    if (typeof payload.reasoning_content === 'string') return payload.reasoning_content;
+    if (payload.data && typeof payload.data.reasoning_content === 'string') return payload.data.reasoning_content;
+    return '';
+  }
+
   function extractText(payload) {
     if (payload == null) return '';
     if (typeof payload === 'string') return payload;
@@ -265,6 +278,8 @@
             } catch (e) {
               data = raw;
             }
+            var think = extractReasoning(data);
+            if (think && handlers.onReasoning) handlers.onReasoning(think);
             var t = extractText(data);
             full = t;
             if (handlers.onDelta) handlers.onDelta(t, true);
@@ -313,6 +328,9 @@
               } catch (e) {
                 parsed = payload; // 纯文本流
               }
+
+              var think = extractReasoning(parsed);
+              if (think && handlers.onReasoning) handlers.onReasoning(think);
 
               var piece = extractText(parsed);
               if (!piece) return;

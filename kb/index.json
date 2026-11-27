@@ -125,5 +125,19 @@
         "sudoku"
       ]
     }
-  ]
+  ],
+  "domains": {
+    "game.leleleling.site": "game",
+    "read.leleleling.site": "read",
+    "happyfarmer.game.leleleling.site": "farmer",
+    "timepin-tools.leleleling.site": "timepin",
+    "lsfp.leleleling.site": "lsfp",
+    "search.leleleling.site": "search",
+    "xiaole.leleleling.site": "xiaole",
+    "chess.leleleling.site": "chess",
+    "transferassistant.leleleling.site": "transfer",
+    "bibletree.leleleling.site": "bibletree",
+    "photoedits.leleleling.site": "photoedits",
+    "sudoku.leleleling.site": "sudoku"
+  }
 }

@@ -553,6 +553,8 @@
       .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
       .replace(/\[\[point[:：]?[^\]]*$/i, '')
       .replace(/\[\[kb[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[call[:：]?[^\]]*$/i, '')
+      .replace(/\[\[call[:：][^\]]*\]\]/gi, '')
       .replace(/\[\[kb[:：]?[^\]]*$/i, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
@@ -565,10 +567,31 @@
     var body = U.el('div', 'xl-msg-body');
     var content = U.el('div', 'xl-msg-text');
 
+    // 思考过程：后端给了 reasoning 才出现
+    var think = U.el('details', 'xl-think');
+    think.innerHTML = '<summary>思考中…</summary><div class="xl-think-body"></div>';
+    think.style.display = 'none';
+    var thinkBody = think.querySelector('.xl-think-body');
+    var thinkText = '';
+    function pushThink(piece) {
+      if (!piece) return;
+      thinkText += piece;
+      thinkBody.textContent = thinkText;
+      think.style.display = '';
+      think.open = true;
+      scrollToBottom();
+    }
+    function sealThink() {
+      if (!thinkText) return;
+      think.open = false;
+      think.querySelector('summary').textContent = '思考过程';
+    }
+
     if (opts.instant) {
       content.innerHTML = U.toHtml(uiText(text));
     }
 
+    body.appendChild(think);
     body.appendChild(content);
     wrap.appendChild(avatar);
     wrap.appendChild(body);
@@ -576,7 +599,7 @@
     scrollToBottom();
 
     if (opts.instant) {
-      return { wrap: wrap, content: content, finish: function () {} };
+      return { wrap: wrap, content: content, pushThink: function () {}, finish: function () {} };
     }
 
     // 打字机：先建一个空节点，流式追加
@@ -603,6 +626,7 @@
           clearInterval(typing.timer);
           typing = null;
           content.innerHTML = U.toHtml(uiText(printed));
+          sealThink();
           scrollToBottom();
         }
       }, interval)
@@ -611,6 +635,7 @@
     return {
       wrap: wrap,
       content: content,
+      pushThink: pushThink,
       push: function (piece) {
         queue += piece;
       },
@@ -856,6 +881,11 @@
     if (kbCtx) ctxParts.push(kbCtx);
     Chat.send(text, {
       context: ctxParts.join('\n\n'),
+      onReasoning: function (piece) {
+        if (loading && loading.parentNode) { loading.parentNode.removeChild(loading); loading = null; }
+        if (!assistant) assistant = addMessage('assistant', '', {});
+        assistant.pushThink(piece);
+      },
       onDelta: function (piece, done) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
         loading = null;
@@ -880,11 +910,19 @@
         var kbs = U.extractKb(draw.text || '');
         draw.text = kbs.text;
         if (NS.kb) NS.kb.prefetch(kbs.ids);
+        var calls = NS.tools ? NS.tools.parse(draw.text) : { text: draw.text, calls: [] };
+        draw.text = calls.text;
         if (NS.perceive) NS.perceive.draw(point.ids);
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
         if (NS.character && NS.character.react) NS.character.react('happy');
         UI.autoTitle(sendConvId, text, draw.text);
         if (draw.prompts.length) submitImage(draw.prompts[0], { quiet: true });
+        if (calls.calls.length && NS.tools) {
+          if (!assistant) assistant = addMessage('assistant', '', {});
+          var host = assistant.wrap.querySelector('.xl-msg-body');
+          calls.calls.forEach(function (c) { NS.tools.card(host, c); });
+          scrollToBottom();
+        }
         UI.hideTip();
       },
       onError: function () {

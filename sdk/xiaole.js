@@ -47,6 +47,7 @@
     'xiaole-image.js',
     'xiaole-perceive.js',
     'xiaole-kb.js',
+    'xiaole-tools.js',
     'xiaole-ui.js'
   ];
 

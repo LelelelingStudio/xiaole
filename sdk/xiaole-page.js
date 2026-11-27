@@ -333,6 +333,8 @@
       .replace(/\[\[point[:：]?[^\]]*\]\]/gi, '')
       .replace(/\[\[point[:：]?[^\]]*$/i, '')
       .replace(/\[\[kb[:：]?[^\]]*\]\]/gi, '')
+      .replace(/\[\[call[:：]?[^\]]*$/i, '')
+      .replace(/\[\[call[:：][^\]]*\]\]/gi, '')
       .replace(/\[\[kb[:：]?[^\]]*$/i, '');
   }
 
@@ -388,12 +390,35 @@
       '<div class="xlp-msg-avatar">' + (role === 'user' ? '你' : '小') + '</div>' +
       '<div class="xlp-msg-body"><div class="xlp-msg-text"></div></div>';
     var content = wrap.querySelector('.xlp-msg-text');
+    // 思考过程：后端给了 reasoning 才出现，没有就一直是隐藏的
+    var think = U.el('details', 'xlp-think');
+    think.innerHTML = '<summary>思考中…</summary><div class="xlp-think-body"></div>';
+    think.style.display = 'none';
+    content.parentNode.insertBefore(think, content);
+    var thinkBody = think.querySelector('.xlp-think-body');
+    var thinkText = '';
+
+    function pushThink(piece) {
+      if (!piece) return;
+      thinkText += piece;
+      thinkBody.textContent = thinkText;
+      think.style.display = '';
+      think.open = true;
+      scrollBottom();
+    }
+
+    function sealThink() {
+      if (!thinkText) return;
+      think.open = false;
+      think.querySelector('summary').textContent = '思考过程';
+    }
+
     listEl.appendChild(wrap);
     scrollBottom();
 
     if (opts.instant) {
       content.innerHTML = U.toHtml(displayText(text));
-      return { node: wrap, push: function () {}, finish: function () {} };
+      return { node: wrap, push: function () {}, pushThink: function () {}, finish: function () {} };
     }
 
     var shown = '';
@@ -425,6 +450,7 @@
 
     return {
       node: wrap,
+      pushThink: pushThink,
       push: function (piece) {
         if (piece) pending += piece;
       },
@@ -436,6 +462,7 @@
           if (!shown && finalText) shown = finalText;
           if (pending) { shown += pending; pending = ''; }
           content.innerHTML = U.toHtml(displayText(shown));
+          sealThink();
           if (revealedTimer) { clearInterval(revealedTimer); revealedTimer = null; }
           scrollBottom();
         }, 400);
@@ -570,6 +597,12 @@
     if (kbCtx) ctxParts.push(kbCtx);
     Chat.send(text, {
       context: ctxParts.join('\n\n'),
+      onReasoning: function (piece) {
+        if (U.convs.currentId() !== sendConvId) return;
+        if (loading) { removeNode(loading); loading = null; }
+        if (!assistant) assistant = addMessage('assistant', '');
+        assistant.pushThink(piece);
+      },
 
       onDelta: function (piece, isDone) {
         if (loading) { removeNode(loading); loading = null; }
@@ -597,6 +630,9 @@
         var kbs = U.extractKb(draw.text || '');
         draw.text = kbs.text;
         if (NS.kb) NS.kb.prefetch(kbs.ids);
+        // 动作申请：剥掉标记，在气泡里挂"是否允许"的卡
+        var calls = NS.tools ? NS.tools.parse(draw.text) : { text: draw.text, calls: [] };
+        draw.text = calls.text;
         if (NS.perceive && U.convs.currentId() === sendConvId) NS.perceive.draw(point.ids);
         // 只存干净文本，别把 [[draw:...]] / [[point:...]] 指令写进历史；写回发起它的会话
         if (draw.text) U.convs.append({ role: 'assistant', content: draw.text, type: 'text' }, sendConvId);
@@ -607,6 +643,13 @@
         // 模型自己发起的生图：扣额度、直接出图（仍记在发起的会话里）
         if (draw.prompts.length) {
           generateOnDemand(draw.prompts[0], true, sendConvId);
+        }
+
+        if (calls.calls.length && NS.tools && U.convs.currentId() === sendConvId) {
+          if (!assistant) assistant = addMessage('assistant', '');
+          var host = assistant.node.querySelector('.xlp-msg-body');
+          calls.calls.forEach(function (c) { NS.tools.card(host, c); });
+          scrollBottom();
         }
       },
       onError: function () {

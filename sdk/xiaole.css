@@ -1224,3 +1224,77 @@ body.xl-anchor-left .xl-reset-dot {
 @media (max-width: 480px) {
   .xl-point-label { font-size: 10px; padding: 2px 7px; }
 }
+
+/* ===== 思考过程（仅当后端返回 reasoning 时出现） ===== */
+.xl-think,
+.xlp-think {
+  margin: 0 0 8px;
+  border-left: 2px solid var(--xl-line, rgba(120, 120, 130, .28));
+  padding: 2px 0 2px 10px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--xl-muted, #8b8b93);
+  max-height: 220px;
+  overflow: auto;
+}
+
+.xl-think summary,
+.xlp-think summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  color: var(--xl-muted, #8b8b93);
+  opacity: .85;
+  user-select: none;
+}
+.xl-think summary::-webkit-details-marker,
+.xlp-think summary::-webkit-details-marker { display: none; }
+.xl-think summary::before,
+.xlp-think summary::before { content: '◌ '; }
+.xl-think[open] summary::before,
+.xlp-think[open] summary::before { content: '◍ '; }
+
+.xl-think-body,
+.xlp-think-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 4px;
+}
+
+/* ===== 动作确认卡 ===== */
+.xl-call {
+  margin: 8px 0 2px;
+  border: 1px solid var(--xl-line, rgba(120, 120, 130, .22));
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--xl-card, rgba(248, 248, 250, .9));
+  font-size: 13px;
+  line-height: 1.6;
+}
+.xl-call-head { font-weight: 600; color: var(--xl-text, #22222a); }
+.xl-call-sub { margin-top: 2px; font-size: 12px; color: var(--xl-muted, #8b8b93); }
+.xl-call-actions { display: flex; gap: 8px; margin-top: 10px; }
+.xl-call-ok,
+.xl-call-no {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 12.5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.xl-call-ok {
+  background: var(--xl-accent, #3d5afe);
+  color: #fff;
+}
+.xl-call-no {
+  background: rgba(120, 120, 130, .12);
+  color: var(--xl-text, #444);
+}
+.xl-call-ok:hover, .xl-call-no:hover { transform: translateY(-1px); }
+.xl-call-ok:disabled, .xl-call-no:disabled { opacity: .5; cursor: default; transform: none; }
+.xl-call-tip { margin-top: 8px; font-size: 12px; color: var(--xl-muted, #8b8b93); }
+.xl-call-tip.good { color: #2e9e5b; }
+.xl-call-tip.bad { color: #d9534f; }
+.xl-call.is-done { opacity: .92; }
