@@ -43,7 +43,6 @@
     'xiaole-chat.js',
     'xiaole-character.js',
     'xiaole-image.js',
-    'xiaole-tts.js',
     'xiaole-ui.js'
   ];
 

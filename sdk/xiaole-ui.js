@@ -48,7 +48,6 @@
     UI.restoreConv();
     syncImageCount();
     UI.startIdleTalk();
-    if (NS.tts && NS.tts.init) NS.tts.init();
     return Promise.resolve();
   };
 
@@ -554,16 +553,6 @@
       .trim();
   }
 
-  // AI 回复上的朗读按钮（TTS 不可用时自动跳过）
-  function mountTTS(role, body, text) {
-    if (role !== 'assistant') return;
-    if (!NS.tts || typeof NS.tts.mount !== 'function') return;
-    if (!String(text || '').trim()) return;
-    if (body.getAttribute('data-tts')) return;
-    body.setAttribute('data-tts', '1');
-    NS.tts.mount(body, uiText(text));
-  }
-
   function addMessage(role, text, opts) {
     opts = opts || {};
     var wrap = U.el('div', 'xl-msg xl-msg-' + role);
@@ -573,7 +562,6 @@
 
     if (opts.instant) {
       content.innerHTML = U.toHtml(uiText(text));
-      if (!opts.local) mountTTS(role, body, text); // 本地欢迎语不挂朗读
     }
 
     body.appendChild(content);
@@ -611,7 +599,6 @@
           typing = null;
           content.innerHTML = U.toHtml(uiText(printed));
           scrollToBottom();
-          mountTTS(role, body, printed);
         }
       }, interval)
     };

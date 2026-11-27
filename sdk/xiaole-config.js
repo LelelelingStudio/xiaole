@@ -114,15 +114,6 @@
       timeout: 60000
     },
 
-    // 语音朗读（TTS）：所有请求都走后端统一接口，前端不接触任何供应商 Key
-    tts: {
-      enabled: true,
-      endpoint: '/tts',           // POST { text } → 返回 MP3 二进制
-      statusEndpoint: '/tts/status',
-      label: '读',                // 按钮文案
-      chunkSize: 300,            // 单次请求的字数上限，长回复自动切块连续播
-      maxCache: 4               // 本地缓存几段音频，切回来不用重新生成
-    },
 
     // ===== 生图参数 =====
     image: {
