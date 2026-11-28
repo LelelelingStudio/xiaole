@@ -340,7 +340,9 @@
   Ch.wave = function () {
     var map = C.character.rig || {};
     var raw = map.wave && map.wave[gender];
-    if (!raw || !rigBody || !rigArm || C.state.mode !== 'rig' || hidden) return false;
+    if (hidden) return false;
+    if (C.state.mode !== 'rig' || !rigBody || !rigArm) return waveStatic();
+
     var cfg = typeof raw === 'string' ? { arm: raw, body: '', origin: '' } : raw;
     if (!cfg.arm) return false;
     if (waveTimer) { clearTimeout(waveTimer); waveTimer = null; }
@@ -374,12 +376,74 @@
       setTimeout(function () {
         if (!rigBody || !rigArm) return;
         rigBody.src = idleSrc;
+        rigArm.src = rigPath(map.arm || 'arm');
         root.classList.remove('xl-char-wave');
         rigArm.style.transition = '';
         waveTimer = null;
       }, 240);
     }, dur);
     return true;
+  };
+
+  /** 静态立绘没有骨架，挥手就用整帧举手图淡入淡出 */
+  function waveStatic() {
+    var stage = root.querySelector('.xl-char-stage');
+    if (!stage) return false;
+    if (waveTimer) { clearTimeout(waveTimer); waveTimer = null; }
+    var old = stage.querySelector('.xl-char-wave-img');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var frame = C.character.waveStatic || 'assets/rig/girl/body_wave.png';
+    var el = new Image();
+    el.className = 'xl-char-wave-img';
+    el.alt = '';
+    el.draggable = false;
+    el.src = assetUrl(frame);
+    el.onerror = function () {
+      root.classList.add('xl-char-wobble');
+      setTimeout(function () { root.classList.remove('xl-char-wobble'); }, 1400);
+    };
+    stage.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('is-on'); });
+    waveTimer = setTimeout(function () {
+      el.classList.remove('is-on');
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
+      waveTimer = null;
+    }, 1400);
+    return true;
+  }
+
+  /** 动作扩展：点头 / 思考 / 开心 / 跳一下 / 挥手 */
+  Ch.act = function (name) {
+    name = String(name || '').toLowerCase();
+    if (name === 'wave' || name === '挥手') return Ch.wave();
+    if (hidden) return false;
+    var stage = root.querySelector('.xl-char-stage') || root;
+    if (name === 'nod' || name === '点头') {
+      root.classList.remove('xl-act-nod');
+      void root.offsetWidth;
+      root.classList.add('xl-act-nod');
+      setTimeout(function () { root.classList.remove('xl-act-nod'); }, 700);
+      return true;
+    }
+    if (name === 'jump' || name === '跳') {
+      root.classList.remove('xl-act-jump');
+      void root.offsetWidth;
+      root.classList.add('xl-act-jump');
+      setTimeout(function () { root.classList.remove('xl-act-jump'); }, 700);
+      return true;
+    }
+    if (name === 'think' || name === '思考') {
+      if (setFrame && frameEls) setFrame('idle');
+      root.classList.add('xl-act-think');
+      setTimeout(function () { root.classList.remove('xl-act-think'); }, 1200);
+      return true;
+    }
+    if (name === 'happy' || name === '开心') {
+      if (setFrame && frameEls && frameEls.happy) setFrame('happy');
+      setTimeout(function () { if (setFrame) setFrame('idle'); }, 1500);
+      return true;
+    }
+    return false;
   };
 
   /* ================= 分层模式：8 张已对齐的层按同一画布叠起来 ================= */

@@ -1554,3 +1554,39 @@ body.xl-anchor-left .xl-reset-dot {
   margin-left: 8px;
 }
 .xl-img-retry:hover { background: #eaf2ff; }
+
+/* 静态立绘的挥手帧 */
+.xl-char-wave-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity .22s ease-out;
+  pointer-events: none;
+  z-index: 3;
+}
+.xl-char-wave-img.is-on { opacity: 1; }
+
+/* 动作：点头 / 跳一下 / 思考 */
+@keyframes xl-act-nod-kf {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(4px); }
+  65% { transform: translateY(-2px); }
+}
+.xl-character.xl-act-nod .xl-char-stage { animation: xl-act-nod-kf .6s ease-in-out; }
+
+@keyframes xl-act-jump-kf {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-14px) scale(1.02); }
+  70% { transform: translateY(2px) scale(.99); }
+}
+.xl-character.xl-act-jump .xl-char-stage { animation: xl-act-jump-kf .6s ease-out; }
+
+.xl-character.xl-act-think .xl-char-stage { filter: saturate(.9) brightness(.98); transition: filter .3s; }
+
+/* 减少动效：系统开启后全部停下来 */
+@media (prefers-reduced-motion: reduce) {
+  .xl-character *, .xl-char-stage, .xl-rig-arm, .xl-char-wave-img { animation: none !important; transition: none !important; }
+}

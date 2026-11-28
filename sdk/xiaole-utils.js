@@ -129,6 +129,16 @@
     });
   };
 
+  // 输出侧兜底：把内部实现细节（模块名、配置键、脚本名）从回答里抹掉
+  U.scrub = function (text) {
+    return String(text || '')
+      .replace(/xiaole[-a-z]*\.js/gi, '（内部实现）')
+      .replace(/\bMODULES\b/g, '（内部实现）')
+      .replace(/basePrompt/g, '（内部设定）')
+      .replace(/localStorage\.(get|set)Item[^\n]*/gi, '（本地存储）')
+      .replace(/data-xiaole[^\s>]*/gi, '（接入属性）');
+  };
+
   /* ---------------- HTML ---------------- */
 
   U.escape = function (str) {
@@ -147,6 +157,7 @@
     if (!u) return '';
     if (/^(https?:)?\/\//i.test(u) || /^(mailto:|tel:)/i.test(u)) return u;
     if (/^\/[^/]/.test(u) || /^#/.test(u)) return u;
+    if (/^(javascript|data|vbscript|file|blob):/i.test(u)) return '';
     return '';
   }
 
@@ -560,7 +571,23 @@
     },
     _write: function (d) {
       d.list = (d.list || []).slice(0, (NS.config.conv || {}).maxCount || 50);
-      U.store.set(CONV_KEY, d);
+      // 本地存储写满时逐条丢弃最旧的对话，至少保证当前这句话能存下去
+      for (var tries = 0; tries < 12; tries++) {
+        if (U.store.set(CONV_KEY, d)) return true;
+        var cur = U.convs.currentId();
+        if (d.list.length <= 1) break;
+        var cut = -1;
+        for (var i = d.list.length - 1; i >= 0; i--) {
+          if (d.list[i].id !== cur) { cut = i; break; }
+        }
+        if (cut < 0) break;
+        d.list.splice(cut, 1);
+        if (!U.store.get('quota-notified', false)) {
+          U.store.set('quota-notified', true);
+          try { U.emit('quota', {}); } catch (e) {}
+        }
+      }
+      return false;
     },
     all: function () {
       return U.convs._read().list;

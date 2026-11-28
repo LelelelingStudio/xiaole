@@ -54,7 +54,8 @@
     'xiaole-quick.js',
     'xiaole-export-image.js',
     'xiaole-stats.js',
-    'xiaole-ui.js'
+    'xiaole-ui.js',
+    'xiaole-extras.js'
   ];
 
   function injectCSS(href) {

@@ -971,7 +971,9 @@
     if (NS.commands && text.charAt(0) === '/') {
       var cmd = NS.commands.parse(text);
       if (cmd.kind === 'help') {
-        UI.showTip(NS.commands.help(), true);
+        var helpTxt = NS.commands.help();
+        addMessage('assistant', helpTxt, { instant: true });
+        U.convs.append({ role: 'assistant', content: helpTxt, type: 'text' }, U.convs.currentId());
         return;
       }
       if (cmd.kind === 'image') {
@@ -1039,6 +1041,7 @@
         draw.text = calls.text;
         var mem = NS.memory ? NS.memory.parse(draw.text) : { text: draw.text, saved: [] };
         draw.text = mem.text;
+        draw.text = U.scrub(draw.text);
         if (mem.saved.length) {
           if (Chat.rebuildSystem) Chat.rebuildSystem();
           UI.showTip('已记住：' + mem.saved.join('；'));

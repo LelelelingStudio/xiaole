@@ -532,16 +532,48 @@
     var retryEl = wrap.querySelector('.xlp-img-retry');
     if (retryEl) {
       if (!prompt) retryEl.style.display = 'none';
-      retryEl.addEventListener('click', function () { if (prompt) generateOnDemand(prompt, false); });
+      var cooling = false;
+      retryEl.addEventListener('click', function () {
+        if (!prompt || cooling) return;
+        // 冷却 8 秒，避免连点重复扣次数
+        cooling = true;
+        retryEl.disabled = true;
+        var left = Math.round((C.image.retryCooldown || 8000) / 1000);
+        retryEl.textContent = left + 's 后可重试';
+        var timer = setInterval(function () {
+          left--;
+          if (left <= 0) {
+            clearInterval(timer);
+            cooling = false;
+            retryEl.disabled = false;
+            retryEl.textContent = '重新生成';
+          } else {
+            retryEl.textContent = left + 's 后可重试';
+          }
+        }, 1000);
+        generateOnDemand(prompt, false);
+      });
     }
 
     function paint(r) {
       var overlay = r.mode === 'overlay';
       box.innerHTML =
-        '<img src="' + (r.display || r.url) + '" alt="生成图片" />' +
+        '<img src="' + (r.display || r.url) + '" alt="生成图片" data-orig="' + U.escape(r.url || '') + '" />' +
         (overlay ? '<span class="xlp-img-wm">' + C.image.watermark.text + '</span>' : '');
       linkEl.href = r.save || r.url;
       linkEl.setAttribute('download', 'xiaole-' + (r.id || 'img') + '.png');
+      var im = box.querySelector('img');
+      if (im) {
+        im.onerror = function () {
+          // 本地缓存过期时回远程地址试一次，再失败就明确告诉用户过期了
+          if (this.dataset.orig && !this.dataset.tried) {
+            this.dataset.tried = '1';
+            this.src = this.dataset.orig;
+            return;
+          }
+          box.innerHTML = '<div class="xlp-img-expired">' + C.text.imgExpired + '</div>';
+        };
+      }
     }
 
     if (imgId) {
@@ -644,7 +676,15 @@
     // 快捷指令：/总结 /翻译 /画图 /帮助
     if (NS.commands && text.charAt(0) === '/') {
       var cmd = NS.commands.parse(text);
-      if (cmd.kind === 'help') { tip(NS.commands.help(), true); return; }
+      if (cmd.kind === 'help') {
+        // 帮助也当成一条正式回答留在对话里，关掉提示也不会丢
+        inputEl.value = '';
+        var helpTxt = NS.commands.help();
+        addMessage('assistant', helpTxt, { instant: true });
+        U.convs.append({ role: 'assistant', content: helpTxt, type: 'text' });
+        scrollBottom();
+        return;
+      }
       if (cmd.kind === 'image') {
         inputEl.value = '';
         submitImage(cmd.prompt);
@@ -718,6 +758,7 @@
         draw.text = calls.text;
         var mem = NS.memory ? NS.memory.parse(draw.text) : { text: draw.text, saved: [] };
         draw.text = mem.text;
+        draw.text = U.scrub(draw.text);
         if (mem.saved.length) {
           if (Chat.rebuildSystem) Chat.rebuildSystem();
           tip('已记住：' + mem.saved.join('；'));
@@ -773,7 +814,17 @@
         removeNode(loading);
         loading = null;
         if (U.convs.currentId() !== sendConvId) return;
-        addMessage('assistant', C.text.errorMsg, { instant: true });
+        var errMsg = addMessage('assistant', C.text.errorMsg, { instant: true });
+        var bar = U.el('div', 'xlp-retry-bar');
+        var retry = U.el('button', 'xlp-retry', C.text.retry);
+        retry.type = 'button';
+        retry.addEventListener('click', function () {
+          if (bar.parentNode) bar.parentNode.removeChild(bar);
+          inputEl.value = text;
+          submit();
+        });
+        bar.appendChild(retry);
+        errMsg.node.querySelector('.xlp-msg-body').appendChild(bar);
       }
     });
     };

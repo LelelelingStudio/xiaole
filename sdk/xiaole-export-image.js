@@ -15,7 +15,7 @@
 
   var W = 720;
   var PAD = 34;
-  var MAX_MSG = 24;
+  var MAX_MSG = 80;
 
   function wrap(ctx, text, maxWidth) {
     var lines = [];
@@ -51,7 +51,7 @@
   function draw(messages, title, convTitle) {
     var scale = 2;
     var meas = document.createElement('canvas').getContext('2d');
-    meas.font = '400 26px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    meas.font = '400 26px -apple-system, "PingFang SC", "Microsoft YaHei", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
 
     var blocks = [];
     var contentW = W - PAD * 2;
@@ -64,7 +64,8 @@
         ? '［图片］' + (m.prompt || '')
         : String(m.content || '');
       if (!text) return;
-      if (text.length > 900) text = text.slice(0, 900) + '…';
+      // 单条最多 4000 字，长回答不再截到 900 字
+      if (text.length > 4000) text = text.slice(0, 4000) + '\n…（超长内容可导出 Markdown 查看全文）';
       var lines = wrap(meas, text, bubbleMax);
       blocks.push({ me: me, lines: lines, h: lines.length * 36 + 28, type: m.type });
     });

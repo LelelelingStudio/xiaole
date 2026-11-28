@@ -949,3 +949,138 @@ body::before {
 }
 .xlp-img-retry:hover { background: #eaf2ff; }
 .xlp-img-retry[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* 深色主题（整页） */
+#xl-page.xlp-dark {
+  --xlp-bg: #171a21;
+  --xlp-card: #20242e;
+  color: #e7ebf3;
+}
+#xl-page.xlp-dark .xlp-header,
+#xl-page.xlp-dark .xlp-sidebar,
+#xl-page.xlp-dark .xlp-msg-body,
+#xl-page.xlp-dark .xlp-mem-card,
+#xl-page.xlp-dark .xlp-composer,
+#xl-page.xlp-dark .xlp-img-cap { background-color: #20242e !important; color: #e7ebf3 !important; }
+#xl-page.xlp-dark .xlp-input,
+#xl-page.xlp-dark textarea { background: #171a21 !important; color: #e7ebf3 !important; }
+#xl-page.xlp-dark .xlp-title,
+#xl-page.xlp-dark .xlp-msg-body * { color: #e7ebf3; }
+#xl-page.xlp-dark .xlp-sub,
+#xl-page.xlp-dark .xlp-img-cap { color: rgba(231, 235, 243, .6) !important; }
+
+/* 深色主题（浮窗） */
+.xl-cloud.xl-dark {
+  --xl-bg: #171a21;
+  --xl-card: #20242e;
+  --xl-text: #e7ebf3;
+}
+.xl-cloud.xl-dark,
+.xl-cloud.xl-dark .xl-cloud-messages { background-color: #20242e !important; color: #e7ebf3 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .xlp-root *, .xl-root * { animation-duration: .001s !important; transition-duration: .001s !important; }
+}
+
+/* ===== 附加功能 ===== */
+.xlp-extra-group { display: contents; }
+.xlp-search {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+}
+.xlp-search-mask { position: absolute; inset: 0; background: rgba(10, 14, 22, .38); }
+.xlp-search-panel {
+  position: relative;
+  width: min(560px, calc(100vw - 32px));
+  margin: 8vh auto 0;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(20, 30, 60, .22);
+  padding: 14px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+.xlp-search-panel input {
+  width: 100%;
+  border: 1px solid rgba(60, 90, 150, .18);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  outline: none;
+}
+.xlp-search-list { margin-top: 10px; overflow: auto; }
+.xlp-search-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.xlp-search-item:hover { background: #f2f6ff; }
+.xlp-search-title { display: block; font-size: 13px; font-weight: 600; color: #2c3550; }
+.xlp-search-text { display: block; font-size: 12px; color: #6b7688; margin-top: 2px; line-height: 1.5; }
+.xlp-search-empty { padding: 18px; text-align: center; color: #8a93a6; font-size: 13px; }
+
+.xlp-img-opts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.xlp-img-size, #xlp-img-size {
+  border: 1px solid rgba(60, 90, 150, .18);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  background: #fff;
+}
+.xlp-img-tpl {
+  border: 1px solid rgba(60, 90, 150, .18);
+  background: #f6f9ff;
+  color: #3a5c96;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 3px 10px;
+  margin: 2px 4px 2px 0;
+  cursor: pointer;
+}
+
+.xlp-stop-btn {
+  display: none;
+  align-items: center;
+  border: 1px solid rgba(200, 80, 80, .35);
+  background: #fff3f3;
+  color: #c0504d;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 4px 10px;
+  margin-left: 6px;
+  cursor: pointer;
+}
+
+/* 单条回答的「导出这张图」收进右键菜单，不再占版面 */
+.xlp-msg-act { display: none !important; }
+
+.xlp-retry-bar { margin-top: 8px; }
+.xlp-retry {
+  border: 1px solid rgba(60, 120, 220, .35);
+  background: #f6f9ff;
+  color: #2f6cd4;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.xlp-img-expired {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f3f5f9;
+  color: #7b8494;
+  font-size: 12px;
+  text-align: center;
+}

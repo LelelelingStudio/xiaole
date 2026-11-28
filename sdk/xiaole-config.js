@@ -66,7 +66,17 @@
       limitTip: '上下文到达上限，请前往小了网页版（xiaole.leleleling.site）继续对话或者开启新对话',
       imageLimitTip: '今日生图次数已用完（每天 10 次）',
       errorMsg: '网络开小差了，稍后再试试',
-      loading: '小了正在思考…'
+      loading: '小了正在思考…',
+      searchPlaceholder: '搜聊天记录…',
+      searchEmpty: '没找到相关消息',
+      stop: '停止',
+      retry: '重试',
+      imgExpired: '这张图已过期（本地缓存超过 7 天）',
+      themeLight: '浅色',
+      themeDark: '深色',
+      themeAuto: '跟随系统',
+      snapshotOn: '已开启每周本地快照（只存在这台设备）',
+      quotaTip: '本地存储满了，已自动清理最早的对话'
     },
 
     // ===== 10 条本地欢迎语（纯前端随机，不请求后端）=====
@@ -141,8 +151,23 @@
       // 图片代理：远程图片未开 CORS 时用它读字节，才能把水印真正烧进图里（拼成 canvas 后导出）
       proxy: 'https://ai.leleleling.site/proxy/image?url=',
       cacheDays: 7,          // 生成结果本地缓存 7 天，历史记录里的图不会变红叉
+      sizes: [
+        { label: '方形 1:1', value: '1024x1024' },
+        { label: '竖版 9:16', value: '1024x1536' },
+        { label: '横版 16:9', value: '1536x1024' },
+        { label: '横版 4:3', value: '1280x960' }
+      ],
+      defaultSize: '1024x1024',
+      retryCooldown: 8000,   // 同一张图「重新生成」冷却 8 秒，防止连点扣次数
+      timeout: 75000,        // 单次生图超时，避免队列被卡死
+      templates: [
+        { name: '头像', prompt: '一个可爱的动漫少女头像，正面，浅蓝渐变背景，干净线条' },
+        { name: '海报', prompt: '竖版海报，主题：，留出标题区域，简洁排版，扁平插画风' },
+        { name: '表情包', prompt: '一个夸张搞笑的表情包贴纸，白色描边，纯色背景' },
+        { name: '产品图', prompt: '产品白底图，主体居中，柔和阴影，商业摄影风格' }
+      ],
       watermark: {
-        text: 'produced by LeleleAI',
+        text: '了了了AI生成',
         opacity: 0.5,
         fontSize: 14,
         padding: 16
@@ -274,7 +299,9 @@
         accent: '#94b8ff',
         bubbleBg: 'rgba(255,255,255,0.96)',
         textColor: '#2c3550'
-      }
+      },
+      preset: 'auto',        // light / dark / auto
+      waveStatic: 'assets/rig/girl/body_wave.png'
     },
 
     storagePrefix: 'lelele-xiaole-',

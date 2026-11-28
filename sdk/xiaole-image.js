@@ -68,21 +68,27 @@
 
     var body = {
       prompt: opts.prompt,
-      size: opts.size || '1024x1024',
+      size: opts.size || C.image.defaultSize || '1024x1024',
       model: opts.model || '',
-      fingerprint: U.fingerprint(),
       preset: C.state.preset || 'default'
     };
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var kill = null;
 
+    if (ctrl) {
+      kill = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, C.image.timeout || 75000);
+    }
     return fetch(C.apiBase + C.image.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined
     })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       })
+      .then(function (data) { if (kill) { clearTimeout(kill); kill = null; } return data; })
       .then(function (data) {
         var url = extractUrl(data);
         if (!url) throw new Error('no image url');

@@ -30,15 +30,37 @@
     { cmd: '/帮助', desc: '看这些指令' }
   ];
 
+  // 自定义指令：存在本地，/命令 名 → 一段提示词
+  var CUSTOM_KEY = 'custom-commands';
+  Commands.custom = function () {
+    var list = (NS.utils && NS.utils.store ? NS.utils.store.get(CUSTOM_KEY, []) : []);
+    return Array.isArray(list) ? list : [];
+  };
+  Commands.setCustom = function (list) {
+    var clean = (list || []).filter(function (x) { return x && x.name && x.prompt; }).slice(0, 30);
+    if (NS.utils && NS.utils.store) NS.utils.store.set(CUSTOM_KEY, clean);
+    return clean;
+  };
+
   Commands.help = function () {
-    return '可以这样用：\n' + Commands.list.map(function (c) {
-      return c.cmd + '　' + c.desc;
-    }).join('\n');
+    var lines = Commands.list.map(function (c) { return c.cmd + '　' + c.desc; });
+    var mine = Commands.custom();
+    if (mine.length) {
+      lines.push('');
+      lines.push('你自定义的：');
+      mine.forEach(function (c) { lines.push('/' + c.name + '　' + c.prompt); });
+    }
+    return '可以这样用：\n' + lines.join('\n');
   };
 
   /** 返回 { kind:'text'|'image'|'help', text }；不是命令就原样返回 text */
   Commands.parse = function (raw) {
-    var text = String(raw || '').trim();
+    // 兼容全角斜杠、全角空格、行首空白
+    var text = String(raw || '')
+      .replace(/^[\s\u3000]+/, '')
+      .replace(/^／/, '/')
+      .replace(/\u3000/g, ' ')
+      .trim();
     if (text.charAt(0) !== '/') return { kind: 'text', text: text };
 
     var m = text.match(/^\/([^\s/]+)\s*([\s\S]*)$/);
@@ -70,6 +92,16 @@
       }
       if (!body) return { kind: 'help' };
       return { kind: 'text', text: '翻译成' + lang + '。只给译文，术语和专有名词不要改写：\n\n' + body };
+    }
+
+    // 自定义指令：/名字 内容 → 提示词模板，{内容} 或直接拼在末尾
+    var mine = Commands.custom();
+    for (var i = 0; i < mine.length; i++) {
+      if (mine[i].name.toLowerCase() === name) {
+        var tpl = mine[i].prompt;
+        if (tpl.indexOf('{内容}') > -1) return { kind: 'text', text: tpl.replace(/\{内容\}/g, body) };
+        return { kind: 'text', text: tpl + (body ? '\n\n' + body : '') };
+      }
     }
 
     return { kind: 'text', text: text };
@@ -148,8 +180,18 @@
     }, 0);
   }
 
+  function onTouchEnd() {
+    if (cfg().enabled === false) return;
+    // 触屏长按选中：touchend 之后选区才稳定，稍等再取
+    setTimeout(function () {
+      var info = selectedInfo();
+      if (info) showPill(info);
+    }, 260);
+  }
+
   function bind() {
     document.addEventListener('mouseup', onMouseUp, true);
+    document.addEventListener('touchend', onTouchEnd, true);
     document.addEventListener('keyup', function (e) {
       if (e.key === 'Escape') hidePill();
     }, true);
