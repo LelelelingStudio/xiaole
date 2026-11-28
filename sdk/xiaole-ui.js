@@ -75,7 +75,6 @@
 
     var footer = U.el('div', 'xl-cloud-footer');
     footer.innerHTML =
-      '<button class="xl-icon-btn xl-attach-btn" id="xl-attach-btn" title="发截图给我看">＋图</button>' +
       '<input type="file" accept="image/*" id="xl-attach-file" style="display:none" />' +
       '<button class="xl-icon-btn xl-image-toggle" id="xl-image-toggle" title="生成图片">画</button>' +
       '<input class="xl-input" id="xl-input" type="text" autocomplete="off" placeholder="' +

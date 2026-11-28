@@ -1521,3 +1521,15 @@ body.xl-anchor-left .xl-reset-dot {
   background: rgba(120,120,130,.12); color: var(--xl-muted, #6b6f80); cursor: pointer;
 }
 .xl-msg-export:hover { background: rgba(120,120,130,.2); }
+
+/* ---- 浮窗：窄屏输入行不挤 ---- */
+.xl-input { min-width: 0; }
+@media (max-width: 420px) {
+  .xl-input-row { gap: 5px; }
+  .xl-icon-btn { font-size: 11.5px; padding: 4px 7px; }
+}
+@media (max-width: 420px) {
+  .xl-cloud-footer { gap: 5px; padding-left: 8px; padding-right: 8px; }
+  .xl-cloud-footer .xl-input { font-size: 13px; }
+  .xl-cloud-footer .xl-send { padding: 0 10px; font-size: 12px; }
+}

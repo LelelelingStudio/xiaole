@@ -73,7 +73,6 @@
       '<div class="xlp-suggest" id="xlp-suggest"></div>' +
       '<div class="xlp-attach" id="xlp-attach"></div>' +
       '<div class="xlp-input-row">' +
-      '<button class="xlp-icon" id="xlp-attach-btn" title="发截图给我看">＋图</button>' +
       '<input type="file" accept="image/*" id="xlp-attach-file" style="display:none" />' +
       '<button class="xlp-icon" id="xlp-img-toggle" title="生成图片">画</button>' +
       '<textarea class="xlp-input" id="xlp-input" rows="1" placeholder="' + C.text.placeholder + '"></textarea>' +
