@@ -1467,3 +1467,48 @@ body.xl-anchor-left .xl-reset-dot {
   background: rgba(120,120,130,.12);
   color: var(--xl-text, #444);
 }
+
+/* ---- 划词提问 ---- */
+.xl-sel-pill {
+  position: fixed;
+  z-index: 999999;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #2f3346;
+  color: #fff;
+  font: 500 13px/1 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  box-shadow: 0 8px 22px rgba(20, 22, 34, .28);
+  cursor: pointer;
+  animation: xlSelIn .16s ease-out;
+}
+.xl-sel-pill:hover { background: #3a3f56; }
+.xl-sel-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #8f8cff; box-shadow: 0 0 0 3px rgba(143, 140, 255, .22);
+}
+@keyframes xlSelIn { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---- 使用情况（记忆面板） ---- */
+.xl-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.xl-stat-cell {
+  border-radius: 10px;
+  padding: 8px 4px 7px;
+  text-align: center;
+  background: rgba(120, 120, 130, .08);
+}
+.xl-stat-cell b { display: block; font-size: 15px; color: var(--xl-text, #2f3346); font-weight: 600; }
+.xl-stat-cell span { font-size: 11px; color: var(--xl-muted, #8b8b93); }
+.xl-stat-days { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.xl-stat-day { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--xl-muted, #8b8b93); }
+.xl-stat-day i { width: 16px; height: 16px; border-radius: 5px; background: rgba(120, 120, 130, .14); display: block; }
+.xl-stat-day.is-on i { background: var(--xl-accent, #3d5afe); }

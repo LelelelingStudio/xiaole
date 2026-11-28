@@ -55,6 +55,7 @@
       '</div>' +
       '</div>' +
       '<div class="xlp-actions">' +
+      '<button class="xlp-btn" id="xlp-export-top">导出图片</button>' +
       '<button class="xlp-btn" id="xlp-mem-top">记忆</button>' +
       '<button class="xlp-btn" id="xlp-new-top">开启新对话</button>' +
       '</div>' +
@@ -632,6 +633,18 @@
     var imgs = pendingImgs.slice(0, 2);
     if (!text) text = '看看这张图';
 
+    // 快捷指令：/总结 /翻译 /画图 /帮助
+    if (NS.commands && text.charAt(0) === '/') {
+      var cmd = NS.commands.parse(text);
+      if (cmd.kind === 'help') { tip(NS.commands.help(), true); return; }
+      if (cmd.kind === 'image') {
+        inputEl.value = '';
+        submitImage(cmd.prompt);
+        return;
+      }
+      text = cmd.text;
+    }
+
     inputEl.value = '';
     inputEl.style.height = 'auto';
     pendingImgs = [];
@@ -815,9 +828,9 @@
     tip(C.text.imageLimitTip, true);
   }
 
-  function submitImage() {
+  function submitImage(promptArg) {
     if (!NS.image) return;
-    var prompt = (imgInput.value || '').trim();
+    var prompt = String(promptArg || (imgInput.value || '')).trim();
     if (!prompt) {
       tip('先写一句画面描述吧');
       return;
@@ -1004,6 +1017,16 @@
       return productPrompt;
     }, function () { return ''; });
   }
+
+  /** 由外部（划词提问等）带一句话进来 */
+  Page.prefill = function (text) {
+    var t = String(text || '').trim();
+    if (!t || !inputEl) return;
+    inputEl.value = '关于这段内容：\n' + t;
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+    setTimeout(function () { inputEl.focus(); }, 60);
+  };
 
   Page.init = function () {
     applyPrompt().then(start, start);

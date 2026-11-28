@@ -164,6 +164,8 @@
           : '<div class="xl-mem-empty">还没有「总是允许」的动作。</div>') +
         '</div>' +
 
+        (NS.stats ? NS.stats.html() : '') +
+
         '<div class="xl-mem-sec">存储空间</div>' +
         '<div class="xl-store">' +
         '<div class="xl-store-line" id="xl-store-info">正在读取…</div>' +

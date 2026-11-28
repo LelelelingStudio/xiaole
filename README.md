@@ -328,3 +328,10 @@ https://xiaole.leleleling.site/demo.html
 - API：`Xiaole.backup.summary()` / `export()` / `import(file)` / `clearAll()`；事件 `xiaole:backup` → `{action:'export'|'import'|'clear', count}`。
 
 这是换浏览器、换设备时唯一能保住数据的办法，比持久存储可靠。
+
+## 划词提问 / 快捷指令 / 对话导出 / 本地统计
+
+- **划词提问**：宿主页面选中一段文字（2–300 字），旁边出现「问小了」，点开聊天并把这段带进输入框。不读没选中的内容、不改宿主 DOM；`data-xiaole-select="off"` 可关。
+- **快捷指令**：`/总结 内容`、`/翻译 英 内容`（或 `/翻译 中 …`）、`/画图 提示词`、`/帮助`。`/画图` 直接走生图，其余转成正常提问。
+- **导出对话图片**：把当前对话排成竖版 PNG 卡片（标题、双方气泡、页脚水印），入口在浮窗右键菜单「导出对话图片」和整页头部「导出图片」；纯本地 canvas 生成，不上传。API：`Xiaole.exportImage.current()`。
+- **本地使用统计**：记忆面板里显示对话数/消息数/今日消息/生图次数/记忆条数 + 最近 7 天活跃点，全从本地存储算，不埋点。API：`Xiaole.stats.summary()` / `Xiaole.stats.html()`。

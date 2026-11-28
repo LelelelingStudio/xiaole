@@ -36,6 +36,7 @@
   var styleOverride = script ? script.getAttribute('data-char') : null;    // frames / layers
   var perceiveOverride = script ? script.getAttribute('data-xiaole-perceive') : null; // summary / text / off
   var productOverride = script ? script.getAttribute('data-product') : null;          // kb 里的产品 id
+  var selectOverride = script ? script.getAttribute('data-xiaole-select') : null;       // off 关掉划词提问
 
   /* ================= 依赖加载 ================= */
 
@@ -50,6 +51,9 @@
     'xiaole-tools.js',
     'xiaole-memory.js',
     'xiaole-backup.js',
+    'xiaole-quick.js',
+    'xiaole-export-image.js',
+    'xiaole-stats.js',
     'xiaole-ui.js'
   ];
 
@@ -238,6 +242,8 @@
       NS.config.perceive.mode = perceiveOverride;
     }
 
+    if (selectOverride === 'off') NS.config.quick.enabled = false;
+
     // 画法：frames 表情帧（默认） / layers 8 层合成
     if (styleOverride === 'layers' || styleOverride === 'frames' || styleOverride === 'rig') {
       NS.config.character.style = styleOverride;
@@ -302,6 +308,12 @@
   NS.sayNow = function (text) { return NS.ui && NS.ui.sayNow ? NS.ui.sayNow(text) : false; };
   NS.wave = function () { return NS.character ? NS.character.wave() : false; };
   NS.generateImage = function (opts) { return NS.image ? NS.image.generate(opts) : Promise.reject(); };
+  /** 带一句话打开对话（划词提问用）：浮窗走 ui.prefill，整页走 page.prefill */
+  NS.askWith = function (text) {
+    if (NS.ui && NS.ui.prefill) { NS.ui.prefill(text); return true; }
+    if (NS.page && NS.page.prefill) { NS.page.prefill(text); return true; }
+    return false;
+  };
 
   /* ================= 初始化流程 ================= */
 

@@ -186,6 +186,7 @@
       '<div class="xl-menu-item" data-action="history">' + C.text.menuHistory + '</div>' +
       '<div class="xl-menu-item" data-action="memory">记忆与备份<span class="xl-menu-state" id="xl-mem-count"></span></div>' +
       '<div class="xl-menu-item" data-action="backup">导出备份<span class="xl-menu-state" id="xl-backup-state"></span></div>' +
+      '<div class="xl-menu-item" data-action="export-image">导出对话图片</div>' +
       '<div class="xl-menu-item" data-action="sound">' + C.text.menuSound +
       '<span class="xl-menu-state" id="xl-sound-state"></span></div>' +
       '<div class="xl-menu-item" data-action="hide">' + C.text.menuHide + '</div>';
@@ -197,6 +198,16 @@
       if (mi && mi.getAttribute('data-action') === 'memory' && NS.memory) {
         UI.closeMenu();
         NS.memory.panel();
+        return;
+      }
+      if (mi && mi.getAttribute('data-action') === 'export-image') {
+        UI.closeMenu();
+        if (NS.exportImage) {
+          if (NS.exportImage.current()) UI.showTip('正在生成图片…');
+          else UI.showTip('这个对话还没有内容');
+        } else {
+          UI.showTip('导出模块没加载');
+        }
         return;
       }
       if (mi && mi.getAttribute('data-action') === 'backup') {
@@ -950,6 +961,21 @@
     var imgs = pendingImgs.slice(0, 2);
     if (!text) text = '看看这张图';
 
+    // 快捷指令：/总结 /翻译 /画图 /帮助
+    if (NS.commands && text.charAt(0) === '/') {
+      var cmd = NS.commands.parse(text);
+      if (cmd.kind === 'help') {
+        UI.showTip(NS.commands.help(), true);
+        return;
+      }
+      if (cmd.kind === 'image') {
+        inputEl.value = '';
+        submitImage(cmd.prompt, { quiet: false });
+        return;
+      }
+      text = cmd.text;
+    }
+
     inputEl.value = '';
     pendingImgs = [];
     renderAttach();
@@ -1053,6 +1079,20 @@
   }
 
   /* ================= 新对话 ================= */
+
+  /** 由外部（划词提问等）带一句话进来：打开聊天并把文字放进输入框 */
+  UI.prefill = function (text) {
+    UI.open();
+    var t = String(text || '').trim();
+    if (!t) return;
+    if (inputEl) {
+      var prefix = '关于这段内容：\n';
+      inputEl.value = prefix + t;
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+      setTimeout(function () { inputEl.focus(); }, 60);
+    }
+  };
 
   UI.newChat = function () {
     Chat.newSession();

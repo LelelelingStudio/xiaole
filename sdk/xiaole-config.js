@@ -185,6 +185,12 @@
       enabled: true          // 默认开启；关掉后不记、不读、[[mem:...]] 直接剥掉
     },
 
+    // ===== 划词提问 & 快捷指令 =====
+    quick: {
+      enabled: true,         // 划词提问开关；宿主可用 data-xiaole-select="off" 关掉
+      maxChars: 300          // 选中的文字超过这个长度就不弹按钮
+    },
+
     // ===== 角色参数 =====
     character: {
       size: 160,
