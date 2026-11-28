@@ -937,3 +937,15 @@ body::before {
   color: rgba(38, 45, 62, 0.55);
   word-break: break-word;
 }
+.xlp-img-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.xlp-img-retry {
+  border: 1px solid rgba(60, 120, 220, 0.35);
+  background: rgba(255, 255, 255, 0.9);
+  color: #2f6cd4;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.xlp-img-retry:hover { background: #eaf2ff; }
+.xlp-img-retry[disabled] { opacity: 0.5; cursor: not-allowed; }

@@ -834,8 +834,14 @@
       (overlay ? '<span class="xl-img-wm">' + C.image.watermark.text + '</span>' : '') +
       '</span>' +
       (prompt ? '<span class="xl-img-cap">画面描述：' + U.escape(prompt) + '</span>' : '') +
+      '<button class="xl-img-retry" type="button">重新生成</button>' +
       '<a class="xl-img-download" href="' + save + '" download="xiaole.png">保存图片</a>' +
       '</div>';
+    var retryEl = wrap.querySelector('.xl-img-retry');
+    if (retryEl) {
+      if (!prompt) retryEl.style.display = 'none';
+      retryEl.addEventListener('click', function () { if (prompt) submitImage(prompt); });
+    }
     listEl.appendChild(wrap);
     scrollToBottom();
 

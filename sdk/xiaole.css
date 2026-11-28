@@ -1543,3 +1543,14 @@ body.xl-anchor-left .xl-reset-dot {
   color: rgba(38, 45, 62, 0.55);
   word-break: break-word;
 }
+.xl-img-retry {
+  border: 1px solid rgba(60, 120, 220, 0.35);
+  background: rgba(255, 255, 255, 0.9);
+  color: #2f6cd4;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.xl-img-retry:hover { background: #eaf2ff; }

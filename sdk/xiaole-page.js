@@ -521,13 +521,19 @@
       '<div class="xlp-msg-body xlp-msg-image">' +
       '<span class="xlp-img-wrap"></span>' +
       '<span class="xlp-img-cap"></span>' +
-      '<a class="xlp-download" download="xiaole.png">保存图片</a>' +
+      '<div class="xlp-img-bar"><a class="xlp-download" download="xiaole.png">保存图片</a>' +
+      '<button class="xlp-img-retry" type="button">重新生成</button></div>' +
       '</div>';
 
     var box = wrap.querySelector('.xlp-img-wrap');
     var linkEl = wrap.querySelector('.xlp-download');
     var capEl = wrap.querySelector('.xlp-img-cap');
     if (capEl && prompt) capEl.textContent = '画面描述：' + prompt;
+    var retryEl = wrap.querySelector('.xlp-img-retry');
+    if (retryEl) {
+      if (!prompt) retryEl.style.display = 'none';
+      retryEl.addEventListener('click', function () { if (prompt) generateOnDemand(prompt, false); });
+    }
 
     function paint(r) {
       var overlay = r.mode === 'overlay';
