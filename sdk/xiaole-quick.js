@@ -122,8 +122,9 @@
     return false;
   }
 
-  function selectedInfo() {
-    var sel = window.getSelection && window.getSelection();
+  function selectedInfo(win, offsetX, offsetY) {
+    win = win || window;
+    var sel = win.getSelection && win.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
     var text = String(sel.toString() || '').replace(/\s+/g, ' ').trim();
     var max = cfg().maxChars || 300;
@@ -132,7 +133,16 @@
     var range = sel.getRangeAt(0);
     var rect = range.getBoundingClientRect();
     if (!rect || (!rect.width && !rect.height)) return null;
-    return { text: text, rect: rect };
+    return {
+      text: text,
+      rect: {
+        left: rect.left + (offsetX || 0),
+        top: rect.top + (offsetY || 0),
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom + (offsetY || 0)
+      }
+    };
   }
 
   function hidePill() {
@@ -189,9 +199,55 @@
     }, 260);
   }
 
+  // 同源 iframe：把监听挂进去，选区坐标加上 iframe 在页面里的偏移
+  function bindFrame(frame) {
+    try {
+      var doc = frame.contentDocument;
+      if (!doc || frame.dataset.xlSelBound) return;
+      frame.dataset.xlSelBound = '1';
+      function offset() {
+        var r = frame.getBoundingClientRect();
+        return { x: r.left, y: r.top };
+      }
+      function take() {
+        var o = offset();
+        var info = selectedInfo(frame.contentWindow, o.x, o.y);
+        if (info) showPill(info);
+        else hidePill();
+      }
+      doc.addEventListener('mouseup', function () { setTimeout(take, 0); }, true);
+      doc.addEventListener('touchend', function () { setTimeout(take, 260); }, true);
+      doc.addEventListener('scroll', hidePill, true);
+    } catch (e) {
+      // 跨域 iframe 拿不到，正常现象
+    }
+  }
+
+  function scanFrames() {
+    var frames = document.querySelectorAll('iframe');
+    for (var i = 0; i < frames.length; i++) bindFrame(frames[i]);
+    frames = document.querySelectorAll('iframe');
+    for (var j = 0; j < frames.length; j++) {
+      try {
+        if (frames[j].contentDocument) {
+          frames[j].contentDocument.addEventListener('mouseup', function (ev) {
+            var f = ev.currentTarget.defaultView && ev.currentTarget.defaultView.frameElement;
+            if (f) bindFrame(f);
+          }, true);
+        }
+      } catch (e) {}
+    }
+  }
+
   function bind() {
     document.addEventListener('mouseup', onMouseUp, true);
     document.addEventListener('touchend', onTouchEnd, true);
+    scanFrames();
+    var tries = 0;
+    var timer = setInterval(function () {
+      scanFrames();
+      if (++tries > 10) clearInterval(timer);
+    }, 1500);
     document.addEventListener('keyup', function (e) {
       if (e.key === 'Escape') hidePill();
     }, true);
