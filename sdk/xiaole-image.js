@@ -50,7 +50,16 @@
    * @param {Object} opts { prompt, size, model }
    * @returns {Promise<{id,url,display,save,mode}>}
    */
+  // 生图串行队列：agnes 同一账号并发两个任务时偶尔把结果串线（拿到别人的图），
+  // 一次只发一个请求，回来再发下一个。
+  var chain = Promise.resolve();
   Img.generate = function (opts) {
+    var run = chain.then(function () { return doGenerate(opts); }, function () { return doGenerate(opts); });
+    chain = run.catch(function () {});
+    return run;
+  };
+
+  function doGenerate(opts) {
     opts = opts || {};
     if (!opts.prompt) return Promise.reject(new Error('prompt required'));
     if (!Img.canGenerate()) {

@@ -372,7 +372,7 @@
     msgs.forEach(function (m) {
       if (m.type === 'image') {
         hasContent = true;
-        renderImageCard({ id: m.imgId, url: m.url, display: m.url, save: m.url, mode: 'overlay' }, m.imgId);
+        renderImageCard({ id: m.imgId, url: m.url, display: m.url, save: m.url, mode: 'overlay' }, m.imgId, m.prompt);
       } else if (m.content) {
         hasContent = true;
         addMessage(m.role, m.content, { instant: true });
@@ -514,17 +514,20 @@
     if (node && node.parentNode) node.parentNode.removeChild(node);
   }
 
-  function renderImageCard(res, imgId) {
+  function renderImageCard(res, imgId, prompt) {
     var wrap = U.el('div', 'xlp-msg xlp-msg-assistant');
     wrap.innerHTML =
       '<div class="xlp-msg-avatar">小</div>' +
       '<div class="xlp-msg-body xlp-msg-image">' +
       '<span class="xlp-img-wrap"></span>' +
+      '<span class="xlp-img-cap"></span>' +
       '<a class="xlp-download" download="xiaole.png">保存图片</a>' +
       '</div>';
 
     var box = wrap.querySelector('.xlp-img-wrap');
     var linkEl = wrap.querySelector('.xlp-download');
+    var capEl = wrap.querySelector('.xlp-img-cap');
+    if (capEl && prompt) capEl.textContent = '画面描述：' + prompt;
 
     function paint(r) {
       var overlay = r.mode === 'overlay';
@@ -811,7 +814,7 @@
       .generate({ prompt: prompt })
       .then(function (res) {
         removeNode(loading);
-        if (stillHere()) renderImageCard(res);
+        if (stillHere()) renderImageCard(res, null, prompt);
         U.convs.append({
           role: 'assistant',
           type: 'image',

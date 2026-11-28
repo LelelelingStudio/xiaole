@@ -821,7 +821,7 @@
     });
   }
 
-  function addImageMessage(res) {
+  function addImageMessage(res, prompt) {
     var display = res.display || res.url || '';
     var save = res.save || res.url || display;
     var overlay = res.mode === 'overlay';
@@ -833,6 +833,7 @@
       '<img src="' + display + '" alt="生成图片" />' +
       (overlay ? '<span class="xl-img-wm">' + C.image.watermark.text + '</span>' : '') +
       '</span>' +
+      (prompt ? '<span class="xl-img-cap">画面描述：' + U.escape(prompt) + '</span>' : '') +
       '<a class="xl-img-download" href="' + save + '" download="xiaole.png">保存图片</a>' +
       '</div>';
     listEl.appendChild(wrap);
@@ -879,7 +880,7 @@
       .generate({ prompt: prompt })
       .then(function (res) {
         if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
-        if (stillHere()) addImageMessage(res);
+        if (stillHere()) addImageMessage(res, prompt);
         U.convs.append({
           role: 'assistant',
           type: 'image',

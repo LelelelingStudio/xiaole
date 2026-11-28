@@ -1533,3 +1533,13 @@ body.xl-anchor-left .xl-reset-dot {
   .xl-cloud-footer .xl-input { font-size: 13px; }
   .xl-cloud-footer .xl-send { padding: 0 10px; font-size: 12px; }
 }
+
+/* 生成图下面的实际画面描述 */
+.xl-img-cap {
+  display: block;
+  margin: 6px 2px 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(38, 45, 62, 0.55);
+  word-break: break-word;
+}
