@@ -342,6 +342,41 @@
       '<button class="xlp-btn" id="xlp-pdf-btn" title="导出为 PDF（打印）">导出 PDF</button>' +
       '<button class="xlp-btn" id="xlp-cmd-btn" title="自定义快捷指令">自定义指令</button>';
     actions.insertBefore(group, actions.firstChild);
+
+    // 窄屏：按钮太多会把顶栏撑到 170px 高，收进一个「更多」下拉
+    if (window.innerWidth < 620) {
+      group.style.display = 'none';
+      var more = document.createElement('button');
+      more.className = 'xlp-btn';
+      more.id = 'xlp-more-btn';
+      more.textContent = '更多';
+      var menu = document.createElement('div');
+      menu.className = 'xlp-more-menu';
+      menu.id = 'xlp-more-menu';
+      menu.style.display = 'none';
+      menu.innerHTML = [
+        ['搜索聊天记录', 'search'], ['切换主题', 'theme'],
+        ['导出 Markdown', 'md'], ['导出 PDF', 'pdf'],
+        ['自定义指令', 'cmd'], ['本地快照', 'snap']
+      ].map(function (x) { return '<button type="button" data-act="' + x[1] + '">' + x[0] + '</button>'; }).join('');
+      actions.insertBefore(more, actions.firstChild);
+      actions.appendChild(menu);
+      more.addEventListener('click', function () {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+      });
+      menu.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('button') : null;
+        if (!b) return;
+        menu.style.display = 'none';
+        var act = b.getAttribute('data-act');
+        if (act === 'search') openSearch();
+        else if (act === 'theme') cycleTheme();
+        else if (act === 'md') exportMarkdown();
+        else if (act === 'pdf') exportPdf();
+        else if (act === 'cmd') manageCommands();
+        else if (act === 'snap') { takeSnapshot(false); downloadSnapshot(); }
+      });
+    }
   }
 
   function addMenuItems() {
