@@ -352,6 +352,26 @@
     var armSrc = rigPath(cfg.arm);
     var bodySrc = cfg.body ? rigPath(cfg.body) : '';
 
+    // 有「整帧举手」美术就优先用它：袖子、身形、头身比都和原画一致，
+    // 也不用把手臂拆成单独图层（拆层才容易出现三只手/无袖问题）。
+    var poseSrc = cfg.pose ? rigPath(cfg.pose) : '';
+    if (poseSrc) {
+      if (rigBody.getAttribute('src') !== poseSrc) rigBody.src = poseSrc;
+      if (rigArm) {
+        rigArm.classList.remove('is-on');
+        rigArm.style.opacity = '0';
+      }
+      root.classList.add('xl-char-wave');
+      waveTimer = setTimeout(function () {
+        if (!rigBody) return;
+        rigBody.src = idleSrc;
+        if (rigArm) rigArm.style.opacity = '';
+        root.classList.remove('xl-char-wave');
+        waveTimer = null;
+      }, dur);
+      return true;
+    }
+
     rigArm.style.transformOrigin = cfg.origin || '64% 41%';
     rigArm.style.transition = 'none';
     rigArm.style.transform = 'rotate(' + (cfg.rest || 95) + 'deg)';

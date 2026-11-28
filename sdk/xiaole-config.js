@@ -266,7 +266,7 @@
         tailOrigin: { tail_l: '28% 36%', tail_r: '75% 36%' },
         // 挥手：手臂是独立图层，绕肩部旋转抬起（arm=抬臂层，body=去手身体，origin=肩部支点）
         wave: {
-          girl: { arm: 'arm_wave', body: 'body_noarm', origin: '64.4% 41.2%' },
+          girl: { pose: 'body_wave', arm: 'arm_wave', body: 'body_noarm', origin: '64.4% 41.2%' },
           boy: { arm: 'arm_wave', body: 'body_noarm', origin: '62.8% 48.8%' }
         },
         waveDuration: 1600,
