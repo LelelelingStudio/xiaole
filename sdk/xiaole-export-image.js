@@ -170,6 +170,40 @@
     return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
   }
 
+  function save(canvas, prefix) {
+    // 用 dataURL 同步产出，比 toBlob 稳（部分环境 toBlob 回调不触发）
+    var url;
+    try {
+      url = canvas.toDataURL('image/png');
+    } catch (e) {
+      if (NS.ui && NS.ui.showTip) NS.ui.showTip('导出失败：图片太大或浏览器限制');
+      return false;
+    }
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (prefix || 'xiaole-') + stamp() + '.png';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 1200);
+    U.emit('export-image', { ok: true });
+    return true;
+  }
+
+  /** 单条回答（连同它上面的问题）导出成一张图 */
+  Export.pair = function (question, answer) {
+    var presetName = (NS.config.state && NS.config.state.preset) || '';
+    var canvas;
+    try {
+      canvas = draw([
+        { role: 'user', content: String(question || '') },
+        { role: 'assistant', content: String(answer || '') }
+      ], presetName, '');
+    } catch (e) { return false; }
+    return save(canvas, 'xiaole-answer-');
+  };
+
   /** 导出当前会话为 PNG；没会话时返回 false */
   Export.current = function () {
     var conv = U.convs.current && U.convs.current();
@@ -182,24 +216,7 @@
       if (NS.ui && NS.ui.showTip) NS.ui.showTip('导出失败：' + ((e && e.message) || '画布出错'));
       return false;
     }
-    // 用 dataURL 同步产出，比 toBlob 稳（部分环境 toBlob 回调不触发）
-    var url;
-    try {
-      url = canvas.toDataURL('image/png');
-    } catch (e) {
-      if (NS.ui && NS.ui.showTip) NS.ui.showTip('导出失败：图片太大或浏览器限制');
-      return false;
-    }
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'xiaole-chat-' + stamp() + '.png';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () {
-      if (a.parentNode) a.parentNode.removeChild(a);
-    }, 1200);
-    U.emit('export-image', { ok: true });
-    return true;
+    return save(canvas, 'xiaole-chat-');
   };
 
   /** 把任意文本数组也画成卡片（内部复用） */

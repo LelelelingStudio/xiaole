@@ -1059,6 +1059,17 @@
           }
         }
 
+        if (NS.exportImage && assistant) {
+          var act = U.el('div', 'xl-msg-act');
+          var exBtn = U.el('button', 'xl-msg-export', '导出这张图');
+          exBtn.type = 'button';
+          exBtn.addEventListener('click', function () {
+            if (!NS.exportImage.pair(text, draw.text)) UI.showTip('导出失败');
+          });
+          act.appendChild(exBtn);
+          assistant.wrap.querySelector('.xl-msg-body').appendChild(act);
+        }
+
         if (calls.calls.length && NS.tools) {
           if (!assistant) assistant = addMessage('assistant', '', {});
           var host = assistant.wrap.querySelector('.xl-msg-body');

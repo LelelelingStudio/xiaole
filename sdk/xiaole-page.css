@@ -893,3 +893,12 @@ body::before {
 .xl-stat-day { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #8b8b93; }
 .xl-stat-day i { width: 16px; height: 16px; border-radius: 5px; background: rgba(120, 120, 130, .14); display: block; }
 .xl-stat-day.is-on i { background: #3d5afe; }
+
+/* ---- 单条回答导出 ---- */
+.xl-msg-act { display: flex; gap: 6px; margin-top: 8px; }
+.xl-msg-export {
+  border: 0; border-radius: 999px; padding: 4px 10px;
+  font: 500 11.5px/1.4 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: rgba(120,120,130,.12); color: #6b6f80; cursor: pointer;
+}
+.xl-msg-export:hover { background: rgba(120,120,130,.2); }
