@@ -85,8 +85,6 @@
   var layerBlush = null;
   var rigBody = null;
   var rigArm = null;
-  var waveImg = null;
-  var waveBodyImg = null;
   var waveTimer = null;
 
   function frameSet() {
@@ -338,7 +336,7 @@
     startBlinkLoop();
   }
 
-  /** 挥手：手臂提成独立图层，绕肩部旋转抬起，再左右摆动 */
+  /** 挥手：身体换成无臂版，手臂单独一层绕肩旋转，再左右摆动 */
   Ch.wave = function () {
     var map = C.character.rig || {};
     var raw = map.wave && map.wave[gender];
@@ -351,59 +349,36 @@
     var idleSrc = rigPath(map.body || 'body');
     var armSrc = rigPath(cfg.arm);
     var bodySrc = cfg.body ? rigPath(cfg.body) : '';
+
     rigArm.style.transformOrigin = cfg.origin || '64% 41%';
-    rigArm.style.transform = 'rotate(' + (cfg.rest || 95) + 'deg)';
     rigArm.style.transition = 'none';
+    rigArm.style.transform = 'rotate(' + (cfg.rest || 95) + 'deg)';
+    // 图片是本地/同域缓存，直接换源、不等 onload；onload 只在前几次冷启动可能慢，
+    // 之前等它会让手臂一直透明，看起来像“没有手”。
+    if (rigArm.getAttribute('src') !== armSrc) rigArm.src = armSrc;
+    if (bodySrc && rigBody.getAttribute('src') !== bodySrc) rigBody.src = bodySrc;
 
-    function start() {
+    root.classList.add('xl-char-wave');
+    // 不依赖 requestAnimationFrame：后台标签页会把 rAF 节流，挥手就“不出手”。
+    // 用同步强制回流重启动画，结束时用定时器收尾。
+    if (rigArm) {
+      rigArm.classList.remove('is-on');
+      void rigArm.offsetWidth;
+      rigArm.classList.add('is-on');
+    }
+    waveTimer = setTimeout(function () {
       if (!rigBody || !rigArm) return;
-      if (bodySrc) rigBody.src = bodySrc;
-      root.classList.add('xl-char-wave');
-      // 换图后用一帧时间让浏览器提交样式，再启动旋转动画
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          if (!rigArm) return;
-          rigArm.style.transition = '';
-          rigArm.classList.add('is-on');
-          waveTimer = setTimeout(function () {
-            if (!rigBody || !rigArm) return;
-            rigArm.classList.remove('is-on');
-            rigArm.style.transition = 'opacity .16s linear, transform .22s ease-in';
-            rigArm.style.transform = 'rotate(' + (cfg.rest || 95) + 'deg)';
-            setTimeout(function () {
-              if (!rigBody || !rigArm) return;
-              rigBody.src = idleSrc;
-              root.classList.remove('xl-char-wave');
-              rigArm.style.transition = '';
-              waveTimer = null;
-            }, 240);
-          }, dur);
-        });
-      });
-    }
-
-    var pending = 0;
-    function tryStart() { if (pending === 0) start(); }
-    // 缓存判定：同一性别同一套图直接播
-    if (waveImg && waveImg.dataset.key === gender + ':' + cfg.arm &&
-        (!bodySrc || (waveBodyImg && waveBodyImg.dataset.key === gender + ':' + cfg.body))) {
-      start();
-      return true;
-    }
-    pending = 1 + (bodySrc ? 1 : 0);
-    waveImg = new Image();
-    waveImg.dataset.key = gender + ':' + cfg.arm;
-    waveImg.onload = function () { pending--; tryStart(); };
-    waveImg.onerror = function () { pending = 0; waveImg = null; };
-    waveImg.src = armSrc;
-    rigArm.src = armSrc;
-    if (bodySrc) {
-      waveBodyImg = new Image();
-      waveBodyImg.dataset.key = gender + ':' + cfg.body;
-      waveBodyImg.onload = function () { pending--; tryStart(); };
-      waveBodyImg.onerror = function () { pending--; bodySrc = ''; tryStart(); };
-      waveBodyImg.src = bodySrc;
-    }
+      rigArm.classList.remove('is-on');
+      rigArm.style.transition = 'opacity .16s linear, transform .22s ease-in';
+      rigArm.style.transform = 'rotate(' + (cfg.rest || 95) + 'deg)';
+      setTimeout(function () {
+        if (!rigBody || !rigArm) return;
+        rigBody.src = idleSrc;
+        root.classList.remove('xl-char-wave');
+        rigArm.style.transition = '';
+        waveTimer = null;
+      }, 240);
+    }, dur);
     return true;
   };
 
